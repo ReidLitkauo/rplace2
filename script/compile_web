@@ -1,0 +1,90 @@
+#!/bin/bash
+################################################################################
+# /compile
+# This script will run all the modules under /src through the appropriate
+# commands, and distribute the resulting files correctly.
+
+python3 - <<END
+
+import os
+
+################################################################################
+# Parameters
+
+# Template file
+template_file = 'src/web/template.html'
+
+# Source directory
+# NO TRAILING SLASH
+in_dir = 'src/web'
+
+# Output directories
+# NO TRAILING SLASH
+out_dir = 'web'
+
+################################################################################
+# Function to check if compilation should take place
+# Return true if source exists... and is newer than destination.
+# Also return true if source exists and destination doesn't exist yet.
+def should_compile(src, dst):
+
+	# NOTE Originally I tried adding in a last-modified check ...
+	# ... then I realized I'd have to check dependencies, so nope
+	#return os.path.exists(src) and (not os.path.exists(dst) or os.path.getmtime(src) > os.path.getmtime(dst))
+
+	# Just do it the dumb way
+	return os.path.exists(src)
+
+################################################################################
+# Perform compilation
+
+# Load in template file
+template = ''
+with open(template_file) as tf:
+	template = tf.read()
+
+# Search for compatible files
+for fullroot, directories, filenames in os.walk(in_dir):
+
+	# Remove the indir from the beginning of the root
+	# This makes it easier to move files around later on
+	root = fullroot[len(in_dir):]
+
+	if not root: continue
+
+	# Prepare html, css, and javascript variables
+	head = body = css = js = ''
+
+	# Compile .head.pug and .body.pug
+	if should_compile(in_dir + root + '/\$.head.pug', out_dir + root + '.html'):
+		print('Compiling: ' + in_dir + root + '/\$.head.pug')
+		head = os.popen("phug render-file '" + in_dir + root + "/\$.head.pug'").read()
+	if should_compile(in_dir + root + '/\$.body.pug', out_dir + root + '.html'):
+		print('Compiling: ' + in_dir + root + '/\$.body.pug')
+		body = os.popen("phug render-file '" + in_dir + root + "/\$.body.pug'").read()
+
+	# Compile .sass
+	if should_compile(in_dir + root + '/\$.sass', out_dir + root + '.html'):
+		print('Compiling: ' + in_dir + root + '/\$.sass')
+		css = os.popen("sass --no-source-map --indented --style=compressed --load-path=" + in_dir + " --load-path=" + in_dir + "/_common '" + in_dir + root + "/\$.sass'").read()
+
+	# Compile .coffee
+	if should_compile(in_dir + root + '/\$.coffee', out_dir + root + '.html'):
+		print('Compiling: ' + in_dir + root + '/\$.coffee')
+		js = os.popen("coffee -p './" + in_dir + root + "/\$.coffee'").read()
+	
+	# Paste into template and write final file
+	print('Writing to ' + out_dir + root + '.html')
+	final_file = template.replace('%HEAD%', head).replace('%BODY%', body).replace('%STYLE%', css).replace('%SCRIPT%', js)
+	with open(out_dir + root + '.html', 'w') as of:
+		of.write(final_file)
+
+################################################################################
+# Hard-coded exceptions
+
+# Commented out because this project is a single-page website and therefore doesn't require compiling page templates
+# if should_compile(in_dir + '/\$-template-bridge.pug', out_html + '/\$-template-bridge.php'):
+# 	print('Compiling: ' + in_dir + '/\$-template-bridge.pug -> ' + out_html + '/\$-template-bridge.php')
+# 	os.system("/home/reid/vendor/bin/phug compile-file '" + in_dir + "/\$-template-bridge.pug' -o '" + out_html + "/\$-template-bridge.php'")
+
+END

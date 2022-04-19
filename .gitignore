@@ -1,0 +1,14 @@
+# Don't want to clog the repo with tons of backups.
+backups/bu_*
+
+# Ignore all files I've taken from Reddit.
+# I don't yet know their license, and I'd rather not upload them until I can
+# either find their license or replace them.
+web/Reddit*
+
+# Don't upload my executable. You'll have to build this yourself.
+rplace2
+
+# TODO
+# Don't upload the database!
+
