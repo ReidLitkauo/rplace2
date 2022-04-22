@@ -4,7 +4,7 @@
 package main
 
 import (
-	"log"
+	"github.com/rs/zerolog/log"
 	"net/http"
 	"encoding/binary"
 	"github.com/gorilla/websocket"
@@ -31,22 +31,19 @@ type WebSocketClient struct {
 
 func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Request) *WebSocketClient {
 
-	// Upgrade the passed HTTP connection into a WS connection
-	// TODO move these constants to a better spot, constants.go
+	// Specifications for the websocket upgrader
+	// TODO move these constants to a better spot
 	upgrader := websocket.Upgrader {
 		ReadBufferSize:  1024,
 		WriteBufferSize: 5000000,
 	}
 
+	// Perform the upgrade
 	ws, err := upgrader.Upgrade(w, r, nil)
-
-	// Encountered some sort of error during the upgrade process.
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
+	if err != nil { log.Warn().Err(err).Msg("Unable to upgrade WS connection") }
 
 	// Set ws connection parameters
+	// TODO constants
 	ws.SetReadLimit(64)
 
 	// Create the new WSClient object
@@ -95,9 +92,9 @@ func (this *WebSocketClient) handleSend () {
 	// Main handling loop
 	for { select {
 
-	case msg := <- this.send:
+		case msg := <- this.send:
 
-		this.ws.WritePreparedMessage(msg)
+			this.ws.WritePreparedMessage(msg)
 
 	} }
 
@@ -114,14 +111,11 @@ func (this *WebSocketClient) handleRecv () {
 	// Main handling loop
 	for {
 
-		// Wait for the next message
+		// Wait for the next message, breaking upon closure
 		_, msg, err := this.ws.ReadMessage()
+		if err != nil { break }
 
-		if err != nil {
-			log.Println(err)
-			break
-		}
-log.Println(msg)
+		log.Trace().Msgf("WS recv (%d): 0x%X", len(msg), msg[0])
 
 		// Process different types of messages
 		switch msg[0] {

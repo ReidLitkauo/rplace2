@@ -9,12 +9,8 @@ import (
 	"time"
 	"os"
 	"strconv"
-	"log"
+	"github.com/rs/zerolog/log"
 )
-
-// Work around unused imports during testing
-// TODO remove in production
-var _ = log.Println
 
 ////////////////////////////////////////////////////////////////////////////////
 // Struct definition
@@ -71,24 +67,18 @@ func NewWebSocketHub () *WebSocketHub {
 	// Read the board into memory
 
 	// Open current board file
-
 	f, err := os.Open("./backups/current")
+	if err != nil { log.Panic().Err(err).Msg("Cannot open board file") }
 
-	if err != nil {
-		// TODO
-	}
-
-	defer func() { if err = f.Close(); err != nil {
-		// TODO
-	} }()
+	// Prepare for closure
+	defer func() {
+		err = f.Close()
+		if err != nil { log.Error().Err(err).Msg("Unable to close current board file") }
+	}()
 
 	// Read into board variable
-
 	_, err = f.Read(ret.board)
-
-	if err != nil {
-		// TODO
-	}
+	if err != nil { log.Panic().Err(err).Msg("Unable to read current board file") }
 
 	//==========================================================================
 	// Run the hub's main loop
@@ -96,6 +86,9 @@ func NewWebSocketHub () *WebSocketHub {
 	go ret.run()
 
 	//==========================================================================
+	// Nothing to do here *blast off*
+
+	log.Info().Msg("Websocket hub is set up")
 	return ret
 
 }
@@ -111,11 +104,7 @@ func (this *WebSocketHub) GetInitializationMessage () *websocket.PreparedMessage
 
 	// Use it to generate a new prepared message
 	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
-	
-		if err != nil {
-			// TODO
-			return nil
-		}
+	if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
 	
 	return msgprep
 
@@ -153,7 +142,6 @@ func (this *WebSocketHub) run () {
 	}()
 
 	// Set up tickers
-	// TODO constants
 	this.tickerUpdate = time.NewTicker(TIMER_UPDATE_MS * time.Millisecond)
 	this.tickerBackup = time.NewTicker(TIMER_BACKUP_MS * time.Millisecond)
 
@@ -194,10 +182,11 @@ func (this *WebSocketHub) run () {
 // Update clients with board changes
 func (this *WebSocketHub) processUpdate () {
 
+	//--------------------------------------------------------------------------
+	// Initialization
+
 	// Don't send anything if no changes made
-	if len(this.changes) == 0 {
-		return
-	}
+	if len(this.changes) == 0 { return }
 
 	// Final message buffer
 	msgraw := make([]byte, 1 + (4 * len(this.changes)))
@@ -205,8 +194,10 @@ func (this *WebSocketHub) processUpdate () {
 	// Set message type
 	msgraw[0] = MSGTYPE_HUPDATE
 
-	// Build out message and update internal board state
+	//--------------------------------------------------------------------------
+	// Processing
 
+	// Loop over all changes, build message and update board state at same time
 	// k is index (packed x/y) -- v is color code
 	i := 1; for k, v := range this.changes {
 		binary.BigEndian.PutUint32( msgraw[i:i+4], PackPixel2(k, v) )
@@ -216,13 +207,7 @@ func (this *WebSocketHub) processUpdate () {
 
 	// Prepare message
 	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
-log.Println(msgraw)
-
-	if err != nil {
-		// TODO
-	}
-
-	// TODO error handling
+	if err != nil { log.Error().Err(err).Msg("Unable to prepare update WS message") }
 
 	// Send to all clients
 	for c, _ := range this.clients {
@@ -238,26 +223,27 @@ log.Println(msgraw)
 // Complete backup of board state
 func (this *WebSocketHub) processBackup () {
 
+	// Grab a timestamp
+	ts := strconv.Itoa((int)(time.Now().Unix()))
+
 	// Rename current backup of board
-	os.Rename("./backups/current", "./backups/bu_" + strconv.Itoa((int)(time.Now().Unix())))
+	os.Rename("./backups/current", "./backups/bu_" + ts)
 
-	// Write board variable as new current
-
+	// Open new current file for writing
 	f, err := os.Create("./backups/current")
+	if err != nil { log.Error().Err(err).Msg("Unable to create new backup file") }
 
-	if err != nil {
-		log.Println(err)
-	}
+	// Defer closure of current file
+	defer func() {
+		err = f.Close()
+		if err != nil { log.Error().Err(err).Msg("Unable to close new current board file") }
+	}()
 
-	defer func() { if err = f.Close(); err != nil {
-		// TODO
-	} }()
-
+	// Write new file
 	_, err = f.Write(this.board)
+	if err != nil { log.Error().Err(err).Msg("Unable to write contents of board to new current board file") }
 
-	if err != nil {
-		// TODO
-	}
+	log.Info().Msgf("Backup created: %s", ts)
 
 }
 
@@ -273,7 +259,7 @@ func (this *WebSocketHub) register (c *WebSocketClient) {
 // Terminate the client's connection and remove from clients list
 func (this *WebSocketHub) deregister (c *WebSocketClient) {
 	if _, exists := this.clients[c]; exists {
-		//c.terminateConnection()
+		//c.terminateConnection() // TODO is this necessary?
 		delete(this.clients, c)
 	}
 }

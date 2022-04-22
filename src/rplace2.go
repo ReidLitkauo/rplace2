@@ -2,16 +2,27 @@ package main
 
 import (
 	"net/http"
-	"log"
 	"math/rand"
 	"time"
+	"os"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
 func main () {
 
+	//==========================================================================
+	// Misc Initialization
+
 	// Overwrite the default randomizer seed
 	rand.Seed((int64)(time.Now().Unix()))
+
+	// Properly set up logging
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	zerolog.SetGlobalLevel(zerolog.TraceLevel)
+	log.Logger = log.With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stdout})
+	log.Info().Msg("Logging properly set up")
 
 	//==========================================================================
 	// Websocket stuff
@@ -42,6 +53,7 @@ func main () {
 	//==========================================================================
 	// Generic stuff
 
-	log.Fatal(http.ListenAndServe(":8090", nil))
+	err := http.ListenAndServe(":8090", nil)
+	if err != nil { log.Error().Err(err).Msg("HTTP LISTEN/SERVE") }
 
 }
