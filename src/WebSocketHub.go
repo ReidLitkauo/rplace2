@@ -12,6 +12,10 @@ import (
 	"log"
 )
 
+// Work around unused imports during testing
+// TODO remove in production
+var _ = log.Println
+
 ////////////////////////////////////////////////////////////////////////////////
 // Struct definition
 
@@ -190,14 +194,18 @@ func (this *WebSocketHub) run () {
 // Update clients with board changes
 func (this *WebSocketHub) processUpdate () {
 
+	// Don't send anything if no changes made
+	if len(this.changes) == 0 {
+		return
+	}
+
 	// Final message buffer
 	msgraw := make([]byte, 1 + (4 * len(this.changes)))
 
 	// Set message type
-	msgraw[0] = 0x10
+	msgraw[0] = MSGTYPE_HUPDATE
 
 	// Build out message and update internal board state
-
 
 	// k is index (packed x/y) -- v is color code
 	i := 1; for k, v := range this.changes {
@@ -235,10 +243,10 @@ func (this *WebSocketHub) processBackup () {
 
 	// Write board variable as new current
 
-	f, err := os.Open("./backups/current")
+	f, err := os.Create("./backups/current")
 
 	if err != nil {
-		// TODO
+		log.Println(err)
 	}
 
 	defer func() { if err = f.Close(); err != nil {

@@ -35,7 +35,7 @@ func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Reque
 	// TODO move these constants to a better spot, constants.go
 	upgrader := websocket.Upgrader {
 		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
+		WriteBufferSize: 5000000,
 	}
 
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -121,12 +121,13 @@ func (this *WebSocketClient) handleRecv () {
 			log.Println(err)
 			break
 		}
+log.Println(msg)
 
 		// Process different types of messages
 		switch msg[0] {
 
 			// Place a pixel
-			case 0x20:
+			case MSGTYPE_CPLACE:
 
 				// Convert the next four bytes into an encoded uint32
 				// and add to the hub's queue

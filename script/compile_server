@@ -1,2 +1,2 @@
 #!/bin/bash
-go build ./src/*.go
+go build -o ./rplace2 ./src/*.go

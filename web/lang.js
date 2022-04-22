@@ -35,19 +35,23 @@ window.lang = {
 		{ 'en': "White",       },
 	],
 
-	'loading': {
+	'status_loading': {
 		'en': "Loading...",
 	},
 
-	'placetile': {
+	'status_linkacct': {
+		'en': "Link your Reddit account",
+	},
+
+	'status_placetile': {
 		'en': "Place a tile",
 	},
 
-	'connerr': {
+	'status_connerr': {
 		'en': "Couldn't connect!",
 	},
 
-	'dconn': {
+	'status_dconn': {
 		'en': "Disconnected",
 	},
 

@@ -1,14 +1,21 @@
-# Don't want to clog the repo with tons of backups.
+# Backups. No need to clog the repo with these.
 backups/bu_*
 
-# Ignore all files I've taken from Reddit.
+# All files I've taken from Reddit.
 # I don't yet know their license, and I'd rather not upload them until I can
 # either find their license or replace them.
 web/Reddit*
 
-# Don't upload my executable. You'll have to build this yourself.
+# The executable. You'll have to build this yourself.
 rplace2
+
+# Credentials of various types. Database, API, etc. These values are secret.
+# Here's the constants that this file contains:
+# CRED_REDDIT_CLIENTID
+# CRED_REDDIT_SECRET
+# CRED_REDDIT_REDIRECT
+src/credentials.go
 
 # TODO
 # Don't upload the database!
-
+database.sqlite

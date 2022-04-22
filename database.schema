@@ -1,0 +1,5 @@
+CREATE TABLE nonces (
+ nonce INTEGER,
+ ts_create DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

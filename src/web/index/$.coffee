@@ -1,6 +1,15 @@
 ################################################################################
 # Constants
-# Must be kept the same as the ones in /src/rplace2_common/constants.go
+# Must be kept the same as the ones used by the server
+
+BOARD_WIDTH  = 2000
+BOARD_HEIGHT = 2000
+Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
+
+MSGTYPE_HBOARD  = 0x10
+MSGTYPE_HUPDATE = 0x11
+
+MSGTYPE_CPLACE = 0x20
 
 PALETTE = [
 	[0x6D, 0x00, 0x1A, 0xFF],
@@ -36,10 +45,6 @@ PALETTE = [
 	[0xD4, 0xD7, 0xD9, 0xFF],
 	[0xFF, 0xFF, 0xFF, 0xFF],
 ]
-
-WIDTH  = 2000
-HEIGHT = 2000
-Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
 
 ################################################################################
 # Globals
@@ -104,8 +109,8 @@ window.render_applyPositionScale = (x, y, zoom) =>
 	# Again, canvas is 500000vmin wide/tall and has 2000x2000 px.
 	# We floor x and y here to snap the selection to a grid.
 	$('.img-select-parent').css {
-		left: ((500000.0 / WIDTH ) * Math.floor(x)) + 'vmin' 
-		top:  ((500000.0 / HEIGHT) * Math.floor(y)) + 'vmin'
+		left: ((500000.0 / BOARD_WIDTH ) * Math.floor(x)) + 'vmin' 
+		top:  ((500000.0 / BOARD_HEIGHT) * Math.floor(y)) + 'vmin'
 	}
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
@@ -143,7 +148,9 @@ $ ->
 		if e.originalEvent.x == anchorMX and e.originalEvent.y == anchorMY
 
 			# TODO set coords
-			$('.palette').removeClass('hidden')
+
+			if ui_getStatus() == 'placetile'
+				$('.palette').removeClass('hidden')
 
 	# Use that anchor point when the mouse moves
 	$('body').on 'mousemove', (e) ->
@@ -166,8 +173,8 @@ $ ->
 			moveYratio = moveYpx / (realsizeY * 0.01 * Z[Z_LVL])
 
 			# Set position appropriately
-			X = anchorX - (moveXratio * WIDTH)
-			Y = anchorY - (moveYratio * HEIGHT)
+			X = anchorX - (moveXratio * BOARD_WIDTH)
+			Y = anchorY - (moveYratio * BOARD_HEIGHT)
 
 			# Boundary checking
 			# TODO put this somewhere better, maybe make a class with set/get
@@ -175,10 +182,10 @@ $ ->
 				X = 0
 			if Y < 0
 				Y = 0
-			if X >= WIDTH
-				X = WIDTH - (Number.EPSILON * WIDTH)
-			if Y >= HEIGHT
-				Y = HEIGHT - (Number.EPSILON * HEIGHT)
+			if X >= BOARD_WIDTH
+				X = BOARD_WIDTH - (Number.EPSILON * BOARD_WIDTH)
+			if Y >= BOARD_HEIGHT
+				Y = BOARD_HEIGHT - (Number.EPSILON * BOARD_HEIGHT)
 
 			# Actually do the moving
 			render_applyPositionScale(X, Y, Z[Z_LVL])
@@ -210,7 +217,28 @@ $ ->
 # Pallete Handling
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Initialization
+# Helper functions
+
+#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+# Clean and hide the palette UI
+
+ui_clearPalette = () ->
+	# Clean up the palette UI element and hide it
+
+	# Disable submit button
+	$('.palette form.submit button').attr('disabled', 'disabled')
+
+	# De-select all colors
+	$('.palette .colors .color').removeClass('selected')
+
+	# Clear placement reticule color
+	$('.canvas-parent .img-select-parent').css 'background-color', "transparent"
+
+	# And hide the UI
+	$('.palette').addClass('hidden')
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Initialization and event handling
 $ ->
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
@@ -241,48 +269,92 @@ $ ->
 		$('.canvas-parent .img-select-parent').css 'background-color', "rgb( #{c[0]}, #{c[1]}, #{c[2]} )"
 
 		# Enable the submit button
-		$('.palette form.submit button').prop('disabled', 'false')
+		$('.palette form.submit button')[0].removeAttribute('disabled')
 	
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Button event handling
 
+	#       #       #       #       #       #       #       #       #       #   
+	# Cancel placement
+
 	$('.palette form.cancel').on 'submit', (e) ->
 		e.preventDefault()
-
-		# Disable submit button
-		$('.palette form.submit button').attr('disabled', 'disabled')
-
-		# De-select all colors
-		$('.palette .colors .color').removeClass('selected')
-
-		# Clear placement reticule color
-		$('.canvas-parent .img-select-parent').css 'background-color', "transparent"
-
-		# And hide the UI
-		$('.palette').addClass('hidden')
-
+		ui_clearPalette()
 		false
+
+	#       #       #       #       #       #       #       #       #       #   
+	# Submit placement
 
 	$('.palette form.submit').on 'submit', (e) ->
 		e.preventDefault()
+
+		# Craft and send a pixel-placement message
+
+		ab = new ArrayBuffer(5)
+		dv = new DataView(ab)
+
+		# Set message header
+		dv.setUint8(0, MSGTYPE_CPLACE)
+
+		# Determine coordinates and color
+		x = Math.floor X
+		y = Math.floor Y
+		c = $('.palette .colors .color.selected')[0].dataset.index
+
+		# Create a packed pixel with this data
+		pixel = ((x + (y * BOARD_WIDTH)) << 8) | c
+
+		# Plop the packed pixel in place
+		dv.setUint32(1, pixel)
+
+		# ... and send
+		ws.send(dv)
+
+		# Clean the palette UI
+		ui_clearPalette()
+
 		false
 
 ################################################################################
-# UI Event Handling
+# Status Handling
+
+ui_setStatus = (s) ->
+
+	if s == 'linkacct'
+		$('.panel.status').addClass 'wide'
+	else
+		$('.panel.status').removeClass 'wide'
+
+	$('.panel.status').text window.lang['status_' + s]['en']
+	$('.panel.status')[0].dataset.mode = s
+
+ui_getStatus = () ->
+	$('.panel.status')[0].dataset.mode
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Event handling
+
 $ ->
 
 	$('.panel.status').on 'click', (e) ->
-		$('.palette').removeClass('hidden')
+		
+		switch ui_getStatus()
+
+			#when 'loading'
+
+			when 'linkacct'
+				window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus()
+
+			when 'placetile'
+				$('.palette').removeClass('hidden')
+			
 
 ################################################################################
 # Webpage Initialization
 
 $ ->
 
-	$('.panel.status').text window.lang.loading['en']
-
-$ ->
-	$('canvas')[0].getContext('2d').drawImage( $('#myimg')[0], 0, 0, 2000, 2000, 0, 0, 2000, 2000 )
+	ui_setStatus('loading')
 
 $ ->
 
@@ -292,16 +364,40 @@ $ ->
 		data.arrayBuffer().then (raw) ->
 			d = new DataView(raw)
 
-			console.log d.getUint8 0
+			switch d.getUint8 0
 
-$ ->
+				when MSGTYPE_HBOARD
+					
+					# Grab canvas context and image data
+					cx = $('canvas')[0].getContext '2d'
+					id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
 
-	$('TODO_placetile_btn').on 'click', (e) ->
-		
-		ab = new ArrayBuffer(5)
-		dv = new DataView(ab)
+					# Process each color code passed to us
+					for i in [0 ... BOARD_WIDTH * BOARD_HEIGHT]
+						cc = d.getUint8 i + 1
+						id.data.set PALETTE[cc], i * 4
+					
+					# Put image data
+					cx.putImageData id, 0, 0
 
-		dv.setUint8(0, 0x20)
-		dv.setUint32(1, pixel)
+					# Update the app status
+					ui_setStatus("linkacct")
 
-		ws.send(ab)
+				when MSGTYPE_HUPDATE
+
+					# Grab canvas context and image data
+					cx = $('canvas')[0].getContext '2d'
+					id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
+					console.log d
+
+					# Process each color code passed to us
+					for i in [1 ... d.byteLength ] by 4
+						pack = d.getUint32 i
+						x = Math.floor (pack >> 8) % BOARD_WIDTH
+						y = Math.floor (pack >> 8) / BOARD_WIDTH
+						c = Math.floor (pack >> 0) & 0xFF
+						id.data.set PALETTE[c], 4 * (x + (y * BOARD_WIDTH))
+
+					# Put image data
+					cx.putImageData id, 0, 0
+
