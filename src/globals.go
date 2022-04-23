@@ -19,6 +19,8 @@ const (
 
 	WEB_DIRECTORY = "web"
 
+	MAX_NONCE_AGE_DAYS = 1
+
 )
 
 // The main manager for all websocket connections.

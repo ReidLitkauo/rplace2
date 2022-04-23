@@ -358,7 +358,12 @@ $ ->
 
 $ ->
 
-	window.ws = new WebSocket("ws://" + document.location.host + "/ws")
+	# Build out websocket URL
+	wsurl = "ws://" + document.location.host + "/ws"
+	if document.cookie then wsurl += "?session=" + document.cookie
+
+	# Establish Websocket connection
+	window.ws = new WebSocket wsurl 
 
 	window.ws.onmessage = ({data}) ->
 		data.arrayBuffer().then (raw) ->

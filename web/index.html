@@ -200,7 +200,12 @@
   });
 
   $(function() {
-    window.ws = new WebSocket("ws://" + document.location.host + "/ws");
+    var wsurl;
+    wsurl = "ws://" + document.location.host + "/ws";
+    if (document.cookie) {
+      wsurl += "?session=" + document.cookie;
+    }
+    window.ws = new WebSocket(wsurl);
     return window.ws.onmessage = function(arg) {
       var data;
       data = arg.data;

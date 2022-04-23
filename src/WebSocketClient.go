@@ -31,6 +31,9 @@ type WebSocketClient struct {
 
 func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Request) *WebSocketClient {
 
+	// TODO USE THIS COOKIE TO SET A USERNAME FOR THIS WSC
+	log.Trace().Msgf("cookie: " + r.URL.Query().Get("session"))
+
 	// Specifications for the websocket upgrader
 	// TODO move these constants to a better spot
 	upgrader := websocket.Upgrader {

@@ -3,3 +3,8 @@ CREATE TABLE nonces (
  ts_create DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE sessions (
+	session CHAR(128),
+	username VARCHAR(25),
+	ts_create DATETIME DEFAULT CURRENT_TIMESTAMP
+);

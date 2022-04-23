@@ -45,6 +45,10 @@ func main () {
 		EndpointLinkRedditAccount(w, r, g_db)
 	})
 
+	http.HandleFunc("/endpoint/reddit-redirect", func(w http.ResponseWriter, r *http.Request) {
+		EndpointRedditRedirect(w, r, g_db)
+	})
+
 	//==========================================================================
 	// Static stuff
 
