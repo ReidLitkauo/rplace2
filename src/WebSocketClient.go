@@ -8,12 +8,22 @@ import (
 	"net/http"
 	"encoding/binary"
 	"github.com/gorilla/websocket"
+	"database/sql"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
 // Struct definition
 
 type WebSocketClient struct {
+
+	//==========================================================================
+	// Public fields
+
+	// This client's username, if any
+	Username string
+
+	//==========================================================================
+	// Private fields
 
 	// The hub this client is connected to
 	wsh *WebSocketHub
@@ -24,15 +34,61 @@ type WebSocketClient struct {
 	// Channel of messages to send to this client
 	send chan *websocket.PreparedMessage
 
+	// The session cookie used to authenticate this client, if any
+	session string
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Public methods
+
+//==============================================================================
 // Constructor
 
-func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Request) *WebSocketClient {
+func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r *http.Request) *WebSocketClient {
 
-	// TODO USE THIS COOKIE TO SET A USERNAME FOR THIS WSC
-	log.Trace().Msgf("cookie: " + r.URL.Query().Get("session"))
+	//--------------------------------------------------------------------------
+	// Perform authentication
+
+	// Variable declaration
+	var session string
+	var username string
+
+	// Retrieve session cookie
+	session = r.URL.Query().Get("session")
+
+	// If we have a session cookie, retrieve associated username
+	if session != "" {
+
+		// Extract username
+		userrow := db.QueryRow("SELECT username FROM sessions WHERE session IS ?", session)
+		err := userrow.Scan(&username)
+
+		// Catch errors
+		switch err {
+
+			// Do nothing
+			case nil:
+
+			// Couldn't find session. Either we got a weird session value,
+			// or someone's using an expired session.
+			// In either case, behave as if user is logged out.
+			case sql.ErrNoRows:
+				session = ""
+			
+			// Something else happened
+			default:
+				log.Error().Err(err).Msg("")
+				return nil
+
+		}
+
+	}
+
+	log.Trace().Msgf("session %s / user %s", session, username)
+
+	//--------------------------------------------------------------------------
+	// Upgrade connection
 
 	// Specifications for the websocket upgrader
 	// TODO move these constants to a better spot
@@ -49,11 +105,16 @@ func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Reque
 	// TODO constants
 	ws.SetReadLimit(64)
 
+	//--------------------------------------------------------------------------
+	// Set up and return object
+
 	// Create the new WSClient object
 	wsc := &WebSocketClient{
+		Username: username,
 		wsh: wsh,
 		ws: ws,
 		send: make(chan *websocket.PreparedMessage, 256),
+		session: session,
 	}	
 
 	// Request registration to the hub
@@ -61,18 +122,18 @@ func NewWebSocketClient (wsh *WebSocketHub, w http.ResponseWriter, r *http.Reque
 
 	// Run send/recv goroutines
 	go wsc.handleSend()
-	go wsc.handleRecv()
+	if username != "" { go wsc.handleRecv() }
 
 	// Send initialization message
-	wsc.SendMessage(wsh.GetInitializationMessage())
+	wsc.SendMessage(wsh.GetInitializationMessage(username != ""))
 
 	// Success
 	return wsc
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Public methods
+//==============================================================================
+// Message handling
 
 // Send a message to this client
 func (this *WebSocketClient) SendMessage (m *websocket.PreparedMessage) {
@@ -82,8 +143,9 @@ func (this *WebSocketClient) SendMessage (m *websocket.PreparedMessage) {
 ////////////////////////////////////////////////////////////////////////////////
 // Private methods
 
-// Send out all queued messages
-// Run as goroutine
+//==============================================================================
+// GOROUTINE Send out all queued messages
+
 func (this *WebSocketClient) handleSend () {
 
 	// Cleanup
@@ -102,6 +164,9 @@ func (this *WebSocketClient) handleSend () {
 	} }
 
 }
+
+//==============================================================================
+// GOROUTINE Receive messages from client
 
 func (this *WebSocketClient) handleRecv () {
 
@@ -128,7 +193,7 @@ func (this *WebSocketClient) handleRecv () {
 
 				// Convert the next four bytes into an encoded uint32
 				// and add to the hub's queue
-				this.wsh.RequestPlacePixel(binary.BigEndian.Uint32(msg[1:5]))
+				this.wsh.RequestPlacePixel(this, binary.BigEndian.Uint32(msg[1:5]))
 
 		}
 

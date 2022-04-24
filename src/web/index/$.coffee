@@ -2,14 +2,25 @@
 # Constants
 # Must be kept the same as the ones used by the server
 
+
 BOARD_WIDTH  = 2000
 BOARD_HEIGHT = 2000
 Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
 
-MSGTYPE_HBOARD  = 0x10
-MSGTYPE_HUPDATE = 0x11
+MSGTYPE_HBOARDANON = 0x10
+MSGTYPE_HBOARDAUTH = 0x11
+MSGTYPE_HUPDATE    = 0x12
 
 MSGTYPE_CPLACE = 0x20
+
+RATELIMIT_SEC = 123456
+
+STATUS_LOADING   = 'loading'
+STATUS_LINKACCT  = 'linkacct'
+STATUS_PLACETILE = 'placetile'
+STATUS_CONNERR   = 'connerr'
+STATUS_DCONN     = 'dconn'
+STATUS_COOLDOWN  = 'cooldown'
 
 PALETTE = [
 	[0x6D, 0x00, 0x1A, 0xFF],
@@ -310,6 +321,9 @@ $ ->
 		# ... and send
 		ws.send(dv)
 
+		# Show timeout status
+		ui_setStatus STATUS_COOLDOWN
+
 		# Clean the palette UI
 		ui_clearPalette()
 
@@ -318,91 +332,173 @@ $ ->
 ################################################################################
 # Status Handling
 
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
 ui_setStatus = (s) ->
 
-	if s == 'linkacct'
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Common preprocessing
+
+	# Set dataset attribute right away
+	$('.panel.status')[0].dataset.mode = s
+
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Special considerations
+
+	# Do we need to widen the status bar?
+	if s == STATUS_LINKACCT
 		$('.panel.status').addClass 'wide'
 	else
 		$('.panel.status').removeClass 'wide'
+	
+	# Special handling for cooldown status
+	if s == STATUS_COOLDOWN
+		$('.panel.status').html "
+			<img src='/timer.svg' />
+			<div class='timeleft'></div>
+			"
+		ui_handleCooldown()
+		return
+
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Show status to user
 
 	$('.panel.status').text window.lang['status_' + s]['en']
-	$('.panel.status')[0].dataset.mode = s
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
 ui_getStatus = () ->
 	$('.panel.status')[0].dataset.mode
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Event handling
+# Show cooldown message to user
+
+ui_handleCooldown = () ->
+
+	timeleft = RATELIMIT_SEC
+
+	intervalfn = () ->
+		console.log timeleft
+
+		# Clear the interval if we don't need it anymore
+		if timeleft <= 0
+			$('.panel.status .timeleft').html ''
+			window.clearTimeout interval
+			ui_setStatus STATUS_PLACETILE
+			return
+		
+		# Determine hours/minutes/seconds left
+		h = Math.floor(timeleft / 3600)
+		m = Math.floor((timeleft % 3600) / 60)
+		s = Math.floor(timeleft % 60)
+
+		# Add padding zeroes if needed
+		hs = (if h < 10 then "0" else "") + h
+		ms = (if m < 10 then "0" else "") + m
+		ss = (if s < 10 then "0" else "") + s
+		
+		# Display the properly-formatted time left
+		$('.panel.status .timeleft').html "#{hs}:#{ms}:#{ss}"
+
+		# Decrement our time left
+		timeleft--
+	
+	# Set the interval
+	interval = window.setInterval intervalfn, 1000
+	intervalfn()
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Initialization and event handling
 
 $ ->
+
+	ui_setStatus STATUS_LOADING
 
 	$('.panel.status').on 'click', (e) ->
 		
 		switch ui_getStatus()
 
-			#when 'loading'
+			#when STATUS_LOADING
 
-			when 'linkacct'
+			when STATUS_LINKACCT
 				window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus()
 
-			when 'placetile'
+			when STATUS_PLACETILE
 				$('.palette').removeClass('hidden')
-			
 
 ################################################################################
-# Webpage Initialization
+# Websocket Handling
 
-$ ->
+# Pass a DataView into a MSGTYPE_HBOARD* message, and this function will
+# render that message onto the board.
+render_paintBoard = (wsdv) ->
 
-	ui_setStatus('loading')
+	# Grab canvas context and image data
+	cx = $('canvas')[0].getContext '2d'
+	id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
 
+	# Process each color code passed to us
+	for i in [0 ... BOARD_WIDTH * BOARD_HEIGHT]
+		cc = wsdv.getUint8 i + 1
+		id.data.set PALETTE[cc], i * 4
+	
+	# Put image data
+	cx.putImageData id, 0, 0
+
+# Pass a DataView into a MSGTYPE_HUPDATE message, and this function will
+# render the update to the board.
+render_updateBoard = (wsdv) ->
+
+	# Grab canvas context and image data
+	cx = $('canvas')[0].getContext '2d'
+	id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
+
+	# Process each color code passed to us
+	for i in [1 ... wsdv.byteLength ] by 4
+		pack = wsdv.getUint32 i
+		x = Math.floor (pack >> 8) % BOARD_WIDTH
+		y = Math.floor (pack >> 8) / BOARD_WIDTH
+		c = Math.floor (pack >> 0) & 0xFF
+		id.data.set PALETTE[c], 4 * (x + (y * BOARD_WIDTH))
+
+	# Put image data
+	cx.putImageData id, 0, 0
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 $ ->
 
 	# Build out websocket URL
 	wsurl = "ws://" + document.location.host + "/ws"
-	if document.cookie then wsurl += "?session=" + document.cookie
+	if document.cookie then wsurl += "?session=" + $.cookie('session')
 
 	# Establish Websocket connection
-	window.ws = new WebSocket wsurl 
+	window.ws = new WebSocket wsurl
 
+	# Handle errors and closure
+	window.ws.onerror = window.ws.onclose = (e) ->
+		ui_setStatus STATUS_DCONN
+
+	# Handle messages
 	window.ws.onmessage = ({data}) ->
 		data.arrayBuffer().then (raw) ->
 			d = new DataView(raw)
+			msgtype = d.getUint8 0
 
-			switch d.getUint8 0
+			# Process message
+			switch msgtype
 
-				when MSGTYPE_HBOARD
-					
-					# Grab canvas context and image data
-					cx = $('canvas')[0].getContext '2d'
-					id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
+				# Receiving board for authenticated user
+				when MSGTYPE_HBOARDAUTH
+					ui_setStatus STATUS_PLACETILE
+					render_paintBoard d
 
-					# Process each color code passed to us
-					for i in [0 ... BOARD_WIDTH * BOARD_HEIGHT]
-						cc = d.getUint8 i + 1
-						id.data.set PALETTE[cc], i * 4
-					
-					# Put image data
-					cx.putImageData id, 0, 0
-
-					# Update the app status
-					ui_setStatus("linkacct")
-
+				# User is not authenticated
+				# Tell user to link account to proceed
+				when MSGTYPE_HBOARDANON
+					ui_setStatus STATUS_LINKACCT
+					render_paintBoard d
+				
+				# Board update
 				when MSGTYPE_HUPDATE
-
-					# Grab canvas context and image data
-					cx = $('canvas')[0].getContext '2d'
-					id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
-					console.log d
-
-					# Process each color code passed to us
-					for i in [1 ... d.byteLength ] by 4
-						pack = d.getUint32 i
-						x = Math.floor (pack >> 8) % BOARD_WIDTH
-						y = Math.floor (pack >> 8) / BOARD_WIDTH
-						c = Math.floor (pack >> 0) & 0xFF
-						id.data.set PALETTE[c], 4 * (x + (y * BOARD_WIDTH))
-
-					# Put image data
-					cx.putImageData id, 0, 0
+					render_updateBoard d
 

@@ -30,7 +30,7 @@ func main () {
 	g_wsh = NewWebSocketHub()
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		NewWebSocketClient(g_wsh, w, r)
+		NewWebSocketClient(g_wsh, g_db, w, r)
 	})
 
 	//==========================================================================

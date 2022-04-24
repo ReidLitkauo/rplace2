@@ -37,6 +37,10 @@ type WebSocketHub struct {
 	// Key is 1D index, value is color code
 	changes map[uint32]byte
 
+	// Map of usernames to timestamps for last pixel placed
+	// Used to rate-limit accounts
+	tsplaced map[string]int64
+
 	// Tickers to send out messages and make backups
 	tickerUpdate *time.Ticker
 	tickerBackup *time.Ticker
@@ -59,6 +63,7 @@ func NewWebSocketHub () *WebSocketHub {
 		placedPixels: make(chan uint32),
 		board: make([]byte, BOARD_WIDTH * BOARD_HEIGHT),
 		changes: make(map[uint32]byte),
+		tsplaced: make(map[string]int64),
 		tickerUpdate: nil,
 		tickerBackup: nil,
 	}
@@ -97,10 +102,14 @@ func NewWebSocketHub () *WebSocketHub {
 // Public methods
 
 //==============================================================================
-func (this *WebSocketHub) GetInitializationMessage () *websocket.PreparedMessage {
+func (this *WebSocketHub) GetInitializationMessage (authenticated bool) *websocket.PreparedMessage {
+
+	// Determine correct message type to send
+	msgtype := MSGTYPE_HBOARDANON
+	if (authenticated) { msgtype = MSGTYPE_HBOARDAUTH }
 
 	// Prepend the correct message type to the stored board
-	msgraw := append( []byte{ MSGTYPE_HBOARD }, this.board... )
+	msgraw := append( []byte{ byte(msgtype) }, this.board... )
 
 	// Use it to generate a new prepared message
 	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
@@ -121,8 +130,36 @@ func (this *WebSocketHub) RequestDeregistration (c *WebSocketClient) {
 }
 
 //==============================================================================
-func (this *WebSocketHub) RequestPlacePixel (px uint32) {
+func (this *WebSocketHub) RequestPlacePixel (c *WebSocketClient, px uint32) bool {
+
+	//--------------------------------------------------------------------------
+	// Initialization
+
+	// Get current time
+	now := time.Now().Unix()
+
+	//--------------------------------------------------------------------------
+	// Rejection scenarios
+
+	// Reject all pixels placed by non-authenticated users
+	// ... how would we even get here? meh
+	if c.Username == "" { return false }
+
+	// Reject if request is being placed too soon after the last pixel placed
+	// aka rate limiting
+	if now < this.tsplaced[c.Username] + RATELIMIT_SEC { return false }
+
+	//--------------------------------------------------------------------------
+	// Approved
+
+	// Set timestamp for last placed pixel
+	this.tsplaced[c.Username] = now
+
+	// Place pixel in queue
 	this.placedPixels <- px
+
+	return true
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

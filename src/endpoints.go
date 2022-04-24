@@ -105,15 +105,14 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	// Check the state
 
 	// Delete old nonces
-	// TODO is this broken? fix it
-	_, err := db.Query("DELETE FROM nonces WHERE ts_create <= DATE('now', '-? day')", MAX_NONCE_AGE_DAYS)
-	if err != nil { log.Error().Err(err).Msg("Unable to clear old nonces") }
+	_, err := db.Exec("DELETE FROM nonces WHERE ts_create <= DATE('now', '-? day')", MAX_NONCE_AGE_DAYS)
+	if err != nil { log.Error().Err(err).Msg("") }
 
 	// Grab the nonce
 	nonce, err := strconv.ParseUint( q.Get("state"), 16, 32 )
 	log.Trace().Msgf("%s -> %d", q.Get("state"), nonce)
 
-	// Search for the nonce
+	// Extract nonce
 	var nonceres int
 	noncerow := db.QueryRow("SELECT nonce FROM nonces WHERE nonce IS ?", nonce)
 	err = noncerow.Scan(&nonceres)
@@ -127,7 +126,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 
 	// If we found another error while processing the match
 	if err != nil {
-		log.Error().Err(err).Msgf("Error processing nonce: %s", nonce)
+		log.Error().Err(err).Msg("")
 		http.Redirect(w, r, "/", 303)
 		return
 	}
@@ -294,7 +293,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	// SESSION SET - RETURN TO USER
 
 	// Set cookie
-	w.Header().Set("Set-Cookie", session + "; Path=/; Max-Age=3155695200")
+	w.Header().Set("Set-Cookie", "session=" + session + "; Path=/; Max-Age=3155695200")
 
 	// Return the user to the application
 	log.Trace().Msg("Got through webflow")
