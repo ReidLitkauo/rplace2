@@ -9,13 +9,6 @@ web/Reddit*
 # The executable. You'll have to build this yourself.
 rplace2
 
-# Credentials of various types. Database, API, etc. These values are secret.
-# Here's the constants that this file contains:
-# CRED_REDDIT_CLIENTID
-# CRED_REDDIT_SECRET
-# CRED_REDDIT_REDIRECT
-src/credentials.go
-
 # Configuration, defaults are in config.example.yaml
 config.yaml
 

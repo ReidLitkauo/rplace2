@@ -41,10 +41,10 @@ func EndpointLinkRedditAccount (w http.ResponseWriter, r *http.Request, db *sql.
 
 	// The URL we're redirecting to
 	url := "https://www.reddit.com/api/v1/authorize?"
-	url += "&client_id="     + CRED_REDDIT_CLIENTID
+	url += "&client_id="     + g_cfg.Reddit_creds.Clientid
 	url += "&response_type=" + "code"
 	url += "&state="         + nonces
-	url += "&redirect_uri="  + CRED_REDDIT_REDIRECT
+	url += "&redirect_uri="  + g_cfg.Reddit_creds.Redirect
 	url += "&duration="      + "temporary"
 	url += "&scope="         + "identity"
 
@@ -139,11 +139,11 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		requests.Datas{
 			"grant_type":   "authorization_code",
 			"code":         reddit_code,
-			"redirect_uri": CRED_REDDIT_REDIRECT,
+			"redirect_uri": g_cfg.Reddit_creds.Redirect,
 		},
 
 		// Pass authorization credentials
-		requests.Auth{ CRED_REDDIT_CLIENTID, CRED_REDDIT_SECRET } )
+		requests.Auth{ g_cfg.Reddit_creds.Clientid, g_cfg.Reddit_creds.Secret } )
 	
 	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 	// Run through possible error scenarios
@@ -279,8 +279,9 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 
 	// Perform comparison
 	// TODO put in config file
-	if (created > time.Now().AddDate(-10, 0, 0).Unix()) || (karma < 900) {
+	if (created > time.Now().AddDate( -g_cfg.Account_requirements.Age_years, -g_cfg.Account_requirements.Age_months, -g_cfg.Account_requirements.Age_days ).Unix()) || (karma < int64(g_cfg.Account_requirements.Min_karma)) {
 		http.Redirect(w, r, "/?validate=belowthreshold", 303)
+		return
 	}
 
 	//--------------------------------------------------------------------------

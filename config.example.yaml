@@ -1,0 +1,40 @@
+# config.example.yaml
+# Go through this file and set the configuration you want,
+# then rename it to config.yaml
+# TODO reference setting same defaults in javascript
+
+# Credentials for your Redddit app
+# These can be found by accessing this URL from a developer's account:
+# https://reddit.com/prefs/apps
+reddit_creds:
+  clientid: ""
+  secret:   ""
+  redirect: ""
+
+# The directory all public files are served from
+serve_from: "web"
+
+# Board dimensions
+board:
+  width:  2000
+  height: 2000
+
+# How frequently each application loop's tick will be run. For example:
+# 1000 means run once every 1000ms or 1 second
+# 200 means run once every 200ms or five times a second
+timers:
+  update_ms: 250
+  backup_ms: 300000
+
+# Requirements an account must meet to pass validation and be allowed to place
+account_requirements:
+  age_years:   0
+  age_months:  0
+  age_days:    7
+  min_karma:  20
+
+# The maximum age allowed for a nonce (used in the account verification webflow)
+nonce_max_age_hours: 24
+
+# Default minimum amount of time between pixel placements allowed
+pixel_rate_sec: 10

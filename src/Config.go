@@ -10,6 +10,12 @@ import (
 
 type Config struct {
 
+	Reddit_creds struct {
+		Clientid string `fig:"clientid" validate:"required"`
+		Secret   string `fig:"secret"   validate:"required"`
+		Redirect string `fig:"redirect" validate:"required"`
+	}
+
 	Serve_from string `fig:"serve_from" default:"web"`
 
 	Board struct {
@@ -22,7 +28,7 @@ type Config struct {
 		Backup_ms int `fig:"backup_ms" default:300000`
 	}
 
-	Accout_requirements struct {
+	Account_requirements struct {
 		Age_years  int `fig:"age_years"  default:0`
 		Age_months int `fig:"age_months" default:0`
 		Age_days   int `fig:"age_days"   default:7`
