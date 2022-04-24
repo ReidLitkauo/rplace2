@@ -278,7 +278,6 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	karma := int64(karma_iface.(float64))
 
 	// Perform comparison
-	// TODO put in config file
 	if (created > time.Now().AddDate( -g_cfg.Account_requirements.Age_years, -g_cfg.Account_requirements.Age_months, -g_cfg.Account_requirements.Age_days ).Unix()) || (karma < int64(g_cfg.Account_requirements.Min_karma)) {
 		http.Redirect(w, r, "/?validate=belowthreshold", 303)
 		return
