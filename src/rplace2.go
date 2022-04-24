@@ -67,7 +67,7 @@ func main () {
 	// Generic stuff
 
 	log.Info().Msg("Ready to listen and serve")
-	err := http.ListenAndServe(":8090", nil)
+	err := http.ListenAndServe(":80", nil)
 	if err != nil { log.Error().Err(err).Msg("HTTP LISTEN/SERVE") }
 
 }
