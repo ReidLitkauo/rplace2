@@ -61,7 +61,7 @@ func NewWebSocketHub () *WebSocketHub {
 		reg: make(chan *WebSocketClient),
 		dereg: make(chan *WebSocketClient),
 		placedPixels: make(chan uint32),
-		board: make([]byte, BOARD_WIDTH * BOARD_HEIGHT),
+		board: make([]byte, g_cfg.Board.Width * g_cfg.Board.Height),
 		changes: make(map[uint32]byte),
 		tsplaced: make(map[string]int64),
 		tickerUpdate: nil,
@@ -93,7 +93,6 @@ func NewWebSocketHub () *WebSocketHub {
 	//==========================================================================
 	// Nothing to do here *blast off*
 
-	log.Info().Msg("Websocket hub is set up")
 	return ret
 
 }
@@ -102,20 +101,60 @@ func NewWebSocketHub () *WebSocketHub {
 // Public methods
 
 //==============================================================================
-func (this *WebSocketHub) GetInitializationMessage (authenticated bool) *websocket.PreparedMessage {
+func (this *WebSocketHub) GetInitializationMessages (username string) []*websocket.PreparedMessage {
+
+	//--------------------------------------------------------------------------
+	// Initialization
+
+	ret := make([]*websocket.PreparedMessage, 0)
+
+	//--------------------------------------------------------------------------
+	// Prepare board message
 
 	// Determine correct message type to send
-	msgtype := MSGTYPE_HBOARDANON
-	if (authenticated) { msgtype = MSGTYPE_HBOARDAUTH }
+	msgboardtype := MSGTYPE_HBOARDANON
+	if username != "" { msgboardtype = MSGTYPE_HBOARDAUTH }
 
 	// Prepend the correct message type to the stored board
-	msgraw := append( []byte{ byte(msgtype) }, this.board... )
+	msgboardraw := append( []byte{ byte(msgboardtype) }, this.board... )
 
 	// Use it to generate a new prepared message
-	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
+	msgboardprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgboardraw )
 	if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
+
+	ret = append(ret, msgboardprep)
+
+	//--------------------------------------------------------------------------
+	// Prepare optional rate-limit message
+
+	// Determine how much time is left in cooldown
+	cooldown := this.tsplaced[username] + g_cfg.Pixel_rate_sec - time.Now().Unix()
+
+	// If the user is authenitcated, and the user can't place a pixel quite yet
+	if username != "" && cooldown > 0 {
+
+		// Create raw message
+		msgrateraw := make([]byte, 5)
+
+		// Set message type
+		msgrateraw[0] = MSGTYPE_HRATELIMIT
+
+		// Write cooldown into message
+		binary.BigEndian.PutUint32( msgrateraw[1:5], uint32(cooldown) )
+
+		// Generate new prepared message
+		msgrateprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgrateraw )
+		if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
 	
-	return msgprep
+		// Send out with other messages
+		ret = append(ret, msgrateprep)
+
+	}
+
+	//--------------------------------------------------------------------------
+	// Send out init messages
+
+	return ret
 
 }
 
@@ -147,7 +186,7 @@ func (this *WebSocketHub) RequestPlacePixel (c *WebSocketClient, px uint32) bool
 
 	// Reject if request is being placed too soon after the last pixel placed
 	// aka rate limiting
-	if now < this.tsplaced[c.Username] + RATELIMIT_SEC { return false }
+	if now < this.tsplaced[c.Username] + g_cfg.Pixel_rate_sec { return false }
 
 	//--------------------------------------------------------------------------
 	// Approved
@@ -179,8 +218,8 @@ func (this *WebSocketHub) run () {
 	}()
 
 	// Set up tickers
-	this.tickerUpdate = time.NewTicker(TIMER_UPDATE_MS * time.Millisecond)
-	this.tickerBackup = time.NewTicker(TIMER_BACKUP_MS * time.Millisecond)
+	this.tickerUpdate = time.NewTicker(time.Duration(g_cfg.Timers.Update_ms) * time.Millisecond)
+	this.tickerBackup = time.NewTicker(time.Duration(g_cfg.Timers.Backup_ms) * time.Millisecond)
 
 	// Just a giant, infinitely-running loop
 	// Handle all messages from all channels

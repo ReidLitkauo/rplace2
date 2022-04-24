@@ -10,6 +10,7 @@ Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
 MSGTYPE_HBOARDANON = 0x10
 MSGTYPE_HBOARDAUTH = 0x11
 MSGTYPE_HUPDATE    = 0x12
+MSGTYPE_HRATELIMIT = 0x13
 
 MSGTYPE_CPLACE = 0x20
 
@@ -83,34 +84,79 @@ anchorMX = null
 anchorMY = null
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-window.render_applyPositionScale = (x, y, zoom) =>
-	# Transform the canvas and relevant UI elements to reflect being positioned
-	# at the given X,Y coord with the given zoom.
+
+# Get raw transformation values
+# txp, typ: transform along x/y as percentage
+# sf: scale factor
+# I did a LOT of experimentation to arrive at these numbers, and they seem to
+# work just fine. I don't have a mathematical proof behind these though...
+render_getRawTransform = (x, y, z) ->
+
+	txp = (100.0 / 2000.0) * x
+	typ = (100.0 / 2000.0) * y
+	sf  = z * 0.01
+
+	{txp: txp, typ: typ, sf: sf}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+# From a raw mouse coordinate, grab cooresponding x/y coord on the canvas
+render_getXYFromMouse = (mx, my) ->
+
+	# Grab canvas bounding box, this will take transforms into consideration
+	bb = $('canvas')[0].getBoundingClientRect()
+
+	# Re-orient mouse coordinates to use top-left of canvas as origin
+	mxc = mx - bb.x
+	myc = my - bb.y
+
+	# Scale according to canvas dimensions
+	mxp = mxc / bb.width
+	myp = myc / bb.height
+
+	# We now have coordinates as a percentage of canvas width/height
+	# Multiply by number of pixels to get final result
+	x = mxp * BOARD_WIDTH
+	y = myp * BOARD_HEIGHT
+
+	# Scan for invalid outputs
+	invalid = x < 0 or y < 0 or x >= BOARD_WIDTH or y >= BOARD_HEIGHT
+	
+	# Success
+	return { x: x, y: y, invalid: invalid }
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+# Transform the canvas and relevant UI elements to reflect being positioned
+# at the given X,Y coord with the given zoom.
+render_applyPositionScale = (x, y, z) =>
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Move the canvas parent to the correct spot
 
-	# Do not apply transformations to the canvas element directly!
-	# Apply to .canvas-transform which is designed to handle transformations
-	# The rest of the DOM is styled to maintain their look if the parent
-	# is scaled/moved
-	# We need to do some non-trivial calculations to determine exactly what
-	# the transform string should be, so use an IIFE
-	# It took a LOT of fiddling to get this right. I don't have much in solid
-	# maths/proofs behind all this, but I did mess with it quite a bit,
-	# and it seems to work just fine as-is.
-	$('.canvas-transform').css 'transform', do (x, y, zoom) ->
+	# Grab raw transform values
+	t = render_getRawTransform x, y, z
 
-		scaleFromZoom = (zoom) ->
-			scale = zoom * 0.01
-			"scale(#{scale}) "
+	# Format correctly and apply to element designed to handle these transforms
+	# Other DOM elements will resize and move appropriately
+	$('.canvas-transform').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
+
+	# # Do not apply transformations to the canvas element directly!
+	# # Apply to .canvas-transform which is designed to handle transformations
+	# # The rest of the DOM is styled to maintain their look if the parent
+	# # is scaled/moved
+	# $('.canvas-transform').css 'transform', do (x, y, zoom) ->
+
+	# 	scaleFromZoom = (zoom) ->
+	# 		scale = zoom * 0.01
+	# 		"scale(#{scale}) "
 		
-		translateFromXY = (x, y) ->
-			tx_x = (100.0 / 2000.0) * x
-			tx_y = (100.0 / 2000.0) * y
-			"translate(-#{tx_x}%, -#{tx_y}%) "
+	# 	translateFromXY = (x, y) ->
+	# 		tx_x = (100.0 / 2000.0) * x
+	# 		tx_y = (100.0 / 2000.0) * y
+	# 		"translate(-#{tx_x}%, -#{tx_y}%) "
 		
-		scaleFromZoom(zoom) + translateFromXY(x, y)
+	# 	scaleFromZoom(zoom) + translateFromXY(x, y)
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Move the pixel selection to the correct spot
@@ -140,28 +186,45 @@ $ ->
 	$('body').on 'mousedown', (e) ->
 
 		# Do not establish an anchor point if clicking on UI elements
-		if $(e.target).parents().is('.palette, .panel')
+		if $(e.target).is('.palette, .panel') || $(e.target).parents().is('.palette, .panel')
 			anchorX = null
 			anchorY = null
 			anchorMX = null
 			anchorMY = null
 		
 		else
+
+			# Remove transition smoothing, we want to be responsive
+			$('.canvas-transform').removeClass 'smooth-animation'
+
+			# Establishing an anchor point
 			anchorX = X
 			anchorY = Y
 			anchorMX = e.originalEvent.x
 			anchorMY = e.originalEvent.y
 	
+	# Re-add animation smoothing
+	$('body').on 'mouseup', (e) ->
+		$('.canvas-transform').addClass 'smooth-animation'
+	
 	# Set coords and open palette if clicked
 	$('body').on 'click', (e) ->
-		console.log e
 
+		# If clicked on a single spot, center the canvas there
 		if e.originalEvent.x == anchorMX and e.originalEvent.y == anchorMY
 
-			# TODO set coords
+			# Obtain pixel that was clicked
+			coords = render_getXYFromMouse anchorMX, anchorMY
 
-			if ui_getStatus() == 'placetile'
-				$('.palette').removeClass('hidden')
+			# If clicked in the canvas, center on that location
+			if !coords.invalid
+				X = Math.floor(coords.x) + 0.5
+				Y = Math.floor(coords.y) + 0.5
+				render_applyPositionScale X, Y, Z[Z_LVL]
+
+				# Also show the palette if we can
+				if ui_getStatus() == 'placetile'
+					$('.palette').removeClass('hidden')
 
 	# Use that anchor point when the mouse moves
 	$('body').on 'mousemove', (e) ->
@@ -212,8 +275,23 @@ $ ->
 		if (e.originalEvent.deltaY > 0) && (Z_LVL > 0)
 			Z_LVL -= 1
 		
+		# Remove smoothing
+		$('.canvas-transform').removeClass 'smooth-animation'
+
 		# Render the canvas zoom
 		render_applyPositionScale(X, Y, Z[Z_LVL])
+
+		# Re-establish anchor point if we're holding down a mouse button
+		if e.buttons
+			coord = render_getXYFromMouse e.originalEvent.x, e.originalEvent.y
+			anchorX = X
+			anchorY = Y
+			anchorMX = e.originalEvent.x
+			anchorMY = e.originalEvent.y
+
+
+		# Re-add smoothing if we're not holding a mouse button
+		if !e.buttons then $('.canvas-transform').addClass 'smooth-animation'
 	
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Process mouse click
@@ -334,7 +412,7 @@ $ ->
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
-ui_setStatus = (s) ->
+ui_setStatus = (s, timeleft = RATELIMIT_SEC) ->
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Common preprocessing
@@ -354,10 +432,10 @@ ui_setStatus = (s) ->
 	# Special handling for cooldown status
 	if s == STATUS_COOLDOWN
 		$('.panel.status').html "
-			<img src='/timer.svg' />
+			<img class='timeleft' src='/timer.svg' />
 			<div class='timeleft'></div>
 			"
-		ui_handleCooldown()
+		ui_handleCooldown(timeleft)
 		return
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
@@ -373,12 +451,9 @@ ui_getStatus = () ->
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Show cooldown message to user
 
-ui_handleCooldown = () ->
-
-	timeleft = RATELIMIT_SEC
+ui_handleCooldown = (timeleft = RATELIMIT_SEC) ->
 
 	intervalfn = () ->
-		console.log timeleft
 
 		# Clear the interval if we don't need it anymore
 		if timeleft <= 0
@@ -489,7 +564,11 @@ $ ->
 
 				# Receiving board for authenticated user
 				when MSGTYPE_HBOARDAUTH
-					ui_setStatus STATUS_PLACETILE
+
+					# If we're not rate-limited, allow for pixel placement
+					if ui_getStatus() != STATUS_COOLDOWN then ui_setStatus STATUS_PLACETILE
+
+					# Show the board
 					render_paintBoard d
 
 				# User is not authenticated
@@ -501,4 +580,8 @@ $ ->
 				# Board update
 				when MSGTYPE_HUPDATE
 					render_updateBoard d
+				
+				# Ratelimit message
+				when MSGTYPE_HRATELIMIT
+					ui_setStatus STATUS_COOLDOWN, d.getUint32 1
 

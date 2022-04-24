@@ -16,6 +16,9 @@ rplace2
 # CRED_REDDIT_REDIRECT
 src/credentials.go
 
+# Configuration, defaults are in config.example.yaml
+config.yaml
+
 # TODO
 # Don't upload the database!
 database.sqlite

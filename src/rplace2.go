@@ -22,12 +22,19 @@ func main () {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	zerolog.SetGlobalLevel(zerolog.TraceLevel)
 	log.Logger = log.With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stdout})
-	log.Info().Msg("Logging properly set up")
+	log.Info().Msg("Logging initialized")
+
+	//==========================================================================
+	// Configuration initialization
+
+	g_cfg = NewConfig()
+	log.Info().Msg("Configuration initialized")
 
 	//==========================================================================
 	// Websocket stuff
 
 	g_wsh = NewWebSocketHub()
+	log.Info().Msg("Websockets initialized")
 
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		NewWebSocketClient(g_wsh, g_db, w, r)
@@ -37,6 +44,8 @@ func main () {
 	// Database stuff
 
 	g_db = StartDatabase()
+	log.Info().Msg("Database initialized")
+
 
 	//==========================================================================
 	// Endpoint stuff
@@ -52,11 +61,12 @@ func main () {
 	//==========================================================================
 	// Static stuff
 
-	http.Handle("/", http.FileServer(http.Dir(WEB_DIRECTORY)))
+	http.Handle("/", http.FileServer(http.Dir(g_cfg.Serve_from)))
 
 	//==========================================================================
 	// Generic stuff
 
+	log.Info().Msg("Ready to listen and serve")
 	err := http.ListenAndServe(":8090", nil)
 	if err != nil { log.Error().Err(err).Msg("HTTP LISTEN/SERVE") }
 

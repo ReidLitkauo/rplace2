@@ -1,0 +1,53 @@
+package main
+
+import (
+	"github.com/kkyr/fig"
+	"github.com/rs/zerolog/log"
+)
+
+////////////////////////////////////////////////////////////////////////////////
+// Struct definition
+
+type Config struct {
+
+	Serve_from string `fig:"serve_from" default:"web"`
+
+	Board struct {
+		Width  uint32 `fig:"width"  default:2000`
+		Height uint32 `fig:"height" default:2000`
+	}
+
+	Timers struct {
+		Update_ms int `fig:"update_ms" default:250`
+		Backup_ms int `fig:"backup_ms" default:300000`
+	}
+
+	Accout_requirements struct {
+		Age_years  int `fig:"age_years"  default:0`
+		Age_months int `fig:"age_months" default:0`
+		Age_days   int `fig:"age_days"   default:7`
+		Min_karma  int `fig:"min_karma"  default:20`
+	}
+
+	Nonce_max_age_hours int `fig:"nonce_max_age_hours" default:24`
+
+	Pixel_rate_sec int64 `fig:pixel_rate_sec default:10`
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Public methods
+
+func NewConfig () *Config {
+
+	// Establish return value
+	var cfg Config
+
+	// Load in configuration, panic on failure
+	err := fig.Load(&cfg)
+	if err != nil { log.Panic().Msg("Could not load configuration") }
+
+	// Success
+	return &cfg
+
+}

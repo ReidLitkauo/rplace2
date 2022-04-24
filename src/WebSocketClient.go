@@ -85,8 +85,6 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 
 	}
 
-	log.Trace().Msgf("session %s / user %s", session, username)
-
 	//--------------------------------------------------------------------------
 	// Upgrade connection
 
@@ -125,7 +123,9 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	if username != "" { go wsc.handleRecv() }
 
 	// Send initialization message
-	wsc.SendMessage(wsh.GetInitializationMessage(username != ""))
+	for _, msg := range(wsh.GetInitializationMessages(username)) {
+		wsc.SendMessage(msg)
+	}
 
 	// Success
 	return wsc
@@ -182,8 +182,6 @@ func (this *WebSocketClient) handleRecv () {
 		// Wait for the next message, breaking upon closure
 		_, msg, err := this.ws.ReadMessage()
 		if err != nil { break }
-
-		log.Trace().Msgf("WS recv (%d): 0x%X", len(msg), msg[0])
 
 		// Process different types of messages
 		switch msg[0] {

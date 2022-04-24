@@ -28,7 +28,7 @@ func PackPixel2 (i uint32, c byte) (uint32) {
 }
 
 func PackPixel3 (x uint32, y uint32, c byte) (uint32) {
-	return PackPixel2( x + (y * BOARD_WIDTH), c )
+	return PackPixel2( x + (y * g_cfg.Board.Width), c )
 }
 
 func UnpackPixel2 (p uint32) (uint32, byte) {
@@ -37,5 +37,5 @@ func UnpackPixel2 (p uint32) (uint32, byte) {
 
 func UnpackPixel3 (p uint32) (uint32, uint32, byte) {
 	i, c := UnpackPixel2(p)
-	return i % BOARD_WIDTH, i / BOARD_WIDTH, c
+	return i % g_cfg.Board.Width, i / g_cfg.Board.Width, c
 }
