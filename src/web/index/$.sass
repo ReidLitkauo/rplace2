@@ -170,6 +170,41 @@ body
 ////////////////////////////////////////////////////////////////////////////////
 // Canvas styles
 
+canvas
+	position: fixed
+	z-index: 100
+
+	// This is VERY important for the transforms to apply properly.
+	transform-origin: top left
+
+	// Establish a default size
+	// This is all kinda arbitrary, so I'm doing what I found was closest to
+	// rplace.tk, which is these dimensions being 0.01x zoom.
+	width: 500vmin
+	height: 500vmin
+
+	// Establish a default position, top-left corner of canvas in center
+	top: 50vh
+	left: 50vw
+
+	// Disable anti-aliasing
+	image-rendering: pixelated
+	image-rendering: crisp-edges
+
+.reticule
+	position: fixed
+	z-index: 101
+	pointer-events: none
+
+	img
+		position: absolute
+		top: 0
+		left: 0
+		bottom: 0
+		right: 0
+		transform: scale( (24/20) * 100% )
+
+
 .canvas-transform
 	position: fixed
 	z-index: 100

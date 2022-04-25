@@ -5,7 +5,7 @@
 
 BOARD_WIDTH  = 2000
 BOARD_HEIGHT = 2000
-Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 4, 5]
+Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 7, 10]
 
 MSGTYPE_HBOARDANON = 0x10
 MSGTYPE_HBOARDAUTH = 0x11
@@ -94,7 +94,7 @@ render_getRawTransform = (x, y, z) ->
 
 	txp = (100.0 / 2000.0) * x
 	typ = (100.0 / 2000.0) * y
-	sf  = z * 0.01
+	sf  = z * 10.0
 
 	{txp: txp, typ: typ, sf: sf}
 
@@ -107,23 +107,45 @@ render_getXYFromMouse = (mx, my) ->
 	bb = $('canvas')[0].getBoundingClientRect()
 
 	# Re-orient mouse coordinates to use top-left of canvas as origin
-	mxc = mx - bb.x
-	myc = my - bb.y
+	xc = mx - bb.x
+	yc = my - bb.y
 
 	# Scale according to canvas dimensions
-	mxp = mxc / bb.width
-	myp = myc / bb.height
+	xp = xc / bb.width
+	yp = yc / bb.height
 
 	# We now have coordinates as a percentage of canvas width/height
 	# Multiply by number of pixels to get final result
-	x = mxp * BOARD_WIDTH
-	y = myp * BOARD_HEIGHT
+	x = xp * BOARD_WIDTH
+	y = yp * BOARD_HEIGHT
 
 	# Scan for invalid outputs
 	invalid = x < 0 or y < 0 or x >= BOARD_WIDTH or y >= BOARD_HEIGHT
 	
 	# Success
-	return { x: x, y: y, invalid: invalid }
+	{ x: x, y: y, invalid: invalid }
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+
+# From an x/y coord on the canvas, grab cooresponding raw mouse coordinate
+render_getMouseFromXY = (x, y) ->
+
+	# Grab canvas bounding box, this will take transforms into consideration
+	bb = $('canvas')[0].getBoundingClientRect()
+
+	# Get coords as percentage of canvas TODO
+	xp = x / BOARD_WIDTH
+	yp = y / BOARD_HEIGHT
+
+	# Scale according to canvas dimensions
+	xc = xp * bb.width
+	yc = yp * bb.height
+
+	# Re-orient mouse coordinates to correct for top-left of canvas
+	mx = xc + bb.x
+	my = yc + bb.y
+
+	{ mx: mx, my: my }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 
@@ -139,41 +161,28 @@ render_applyPositionScale = (x, y, z) =>
 
 	# Format correctly and apply to element designed to handle these transforms
 	# Other DOM elements will resize and move appropriately
-	$('.canvas-transform').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
-
-	# # Do not apply transformations to the canvas element directly!
-	# # Apply to .canvas-transform which is designed to handle transformations
-	# # The rest of the DOM is styled to maintain their look if the parent
-	# # is scaled/moved
-	# $('.canvas-transform').css 'transform', do (x, y, zoom) ->
-
-	# 	scaleFromZoom = (zoom) ->
-	# 		scale = zoom * 0.01
-	# 		"scale(#{scale}) "
-		
-	# 	translateFromXY = (x, y) ->
-	# 		tx_x = (100.0 / 2000.0) * x
-	# 		tx_y = (100.0 / 2000.0) * y
-	# 		"translate(-#{tx_x}%, -#{tx_y}%) "
-		
-	# 	scaleFromZoom(zoom) + translateFromXY(x, y)
+	$('canvas').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Move the pixel selection to the correct spot
 
-	# As simple as moving the selction SVG to the correct spot.
-	# The canvas parent transform already did most of the hard work.
-	# Again, canvas is 500000vmin wide/tall and has 2000x2000 px.
+	# Retrieve coordinates for top-left and bottom-right
 	# We floor x and y here to snap the selection to a grid.
-	$('.img-select-parent').css {
-		left: ((500000.0 / BOARD_WIDTH ) * Math.floor(x)) + 'vmin' 
-		top:  ((500000.0 / BOARD_HEIGHT) * Math.floor(y)) + 'vmin'
+	tl = render_getMouseFromXY Math.floor(x), Math.floor(y)
+	br = render_getMouseFromXY 1 + Math.floor(x), 1 + Math.floor(y)
+
+	# As simple as moving the selction SVG's parent to the correct spot.
+	$('.reticule').css {
+		top:    tl.my + 'px'
+		left:   tl.mx + 'px'
+		width:  (br.my - tl.my) + 'px'
+		height: (br.mx - tl.mx) + 'px'
 	}
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Update the XYZ UI element at the top
 
-	$('.panel.pos-zoom').text "(" + Math.floor(X) + "," + Math.floor(Y) + ") " + Z[Z_LVL] + "x"
+	$('.panel.pos-zoom').text "(" + Math.floor(x) + "," + Math.floor(y) + ") " + z + "x"
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Handle mouse events
@@ -195,7 +204,7 @@ $ ->
 		else
 
 			# Remove transition smoothing, we want to be responsive
-			$('.canvas-transform').removeClass 'smooth-animation'
+			$('canvas').removeClass 'smooth-animation'
 
 			# Establishing an anchor point
 			anchorX = X
@@ -205,7 +214,7 @@ $ ->
 	
 	# Re-add animation smoothing
 	$('body').on 'mouseup', (e) ->
-		$('.canvas-transform').addClass 'smooth-animation'
+		$('canvas').addClass 'smooth-animation'
 	
 	# Set coords and open palette if clicked
 	$('body').on 'click', (e) ->
@@ -237,14 +246,14 @@ $ ->
 			moveYpx = e.originalEvent.y - anchorMY
 			
 			# Get the size of the element in pixels
-			realsizeX = $('.canvas-transform').width()
-			realsizeY = $('.canvas-transform').height()
+			realsizeX = $('canvas').width()
+			realsizeY = $('canvas').height()
 			
 			# Convert these coordinates in client space into a percentage of
 			# the element. What percent of the element have we traversed since
 			# mousedown?
-			moveXratio = moveXpx / (realsizeX * 0.01 * Z[Z_LVL])
-			moveYratio = moveYpx / (realsizeY * 0.01 * Z[Z_LVL])
+			moveXratio = moveXpx / (realsizeX * 10.0 * Z[Z_LVL])
+			moveYratio = moveYpx / (realsizeY * 10.0 * Z[Z_LVL])
 
 			# Set position appropriately
 			X = anchorX - (moveXratio * BOARD_WIDTH)
@@ -272,14 +281,21 @@ $ ->
 		# Zoom in and out appropriately if we can
 		if (e.originalEvent.deltaY < 0) && (Z_LVL < Z.length - 1)
 			Z_LVL += 1
-		if (e.originalEvent.deltaY > 0) && (Z_LVL > 0)
+		else if (e.originalEvent.deltaY > 0) && (Z_LVL > 0)
 			Z_LVL -= 1
+		else return
+
+		console.log 'a'
 		
 		# Remove smoothing
-		$('.canvas-transform').removeClass 'smooth-animation'
+		$('canvas').removeClass 'smooth-animation'
+
+		console.log 'b'
 
 		# Render the canvas zoom
 		render_applyPositionScale(X, Y, Z[Z_LVL])
+
+		console.log 'c'
 
 		# Re-establish anchor point if we're holding down a mouse button
 		if e.buttons
@@ -291,7 +307,9 @@ $ ->
 
 
 		# Re-add smoothing if we're not holding a mouse button
-		if !e.buttons then $('.canvas-transform').addClass 'smooth-animation'
+		if !e.buttons then $('canvas').addClass 'smooth-animation'
+
+		console.log 'd'
 	
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Process mouse click
@@ -321,7 +339,7 @@ ui_clearPalette = () ->
 	$('.palette .colors .color').removeClass('selected')
 
 	# Clear placement reticule color
-	$('.canvas-parent .img-select-parent').css 'background-color', "transparent"
+	$('.reticule').css 'background-color', "transparent"
 
 	# And hide the UI
 	$('.palette').addClass('hidden')
@@ -355,7 +373,7 @@ $ ->
 
 		# Change placement reticule to match selected color
 		c = PALETTE[e.target.dataset.index]
-		$('.canvas-parent .img-select-parent').css 'background-color', "rgb( #{c[0]}, #{c[1]}, #{c[2]} )"
+		$('.reticule').css 'background-color', "rgb( #{c[0]}, #{c[1]}, #{c[2]} )"
 
 		# Enable the submit button
 		$('.palette form.submit button')[0].removeAttribute('disabled')
@@ -515,7 +533,7 @@ render_paintBoard = (wsdv) ->
 	# Process each color code passed to us
 	for i in [0 ... BOARD_WIDTH * BOARD_HEIGHT]
 		cc = wsdv.getUint8 i + 1
-		id.data.set PALETTE[cc], i * 4
+		for j in [0...4] then id.data[(i*4)+j] = PALETTE[cc][j]
 	
 	# Put image data
 	cx.putImageData id, 0, 0
