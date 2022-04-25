@@ -2,10 +2,7 @@
 # Constants
 # Must be kept the same as the ones used by the server
 
-
-BOARD_WIDTH  = 2000
-BOARD_HEIGHT = 2000
-Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 7, 10]
+BOARD_WIDTH = BOARD_HEIGHT = 2000
 
 MSGTYPE_HBOARDANON = 0x10
 MSGTYPE_HBOARDAUTH = 0x11
@@ -61,19 +58,82 @@ PALETTE = [
 ################################################################################
 # Globals
 
+################################################################################
+# Canvas positioning
+
+window.g_pos = {
+
+	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+	# Position variables
+
+	# X/Y coords of screen center
+	x: null
+	y: null
+
+	# Floored versions of coords
+	xf: null
+	yf: null
+
+	# Zoom index and zoom level
+	zi: null
+	zl: null
+
+	# Valid values for zoom level
+	zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10]
+
+	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+	# Set position
+	set: (x, y, zi) ->
+
+		# Check for null values, which indicate to not change that coord
+		x ?= this.x
+		y ?= this.y
+		zi ?= this.zi
+
+		# Range checks and other validation
+		if x < 0 then x = 0
+		if y < 0 then y = 0
+		if x >= BOARD_WIDTH  then x = BOARD_WIDTH  * (1 - Math.EPSILON)
+		if y >= BOARD_HEIGHT then x = BOARD_HEIGHT * (1 - Math.EPSILON)
+		zi = Math.floor zi
+		if zi < 0 then zi = 0
+		if zi >= this.zooms.length then zi = this.zooms.length - 1
+		
+		# Set values
+		this.x = x
+		this.y = y
+		this.xf = Math.floor x
+		this.yf = Math.floor y
+		this.zi = zi
+		this.zl = this.zooms[zi]
+
+	# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+	# Add position
+	add: (x, y, zi) -> this.set(x + this.x, y + this.y, zi + this.zi)
+
+}
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Initialization
+
+$ ->
+
+	# Grab position data from cookie, set to defaults if needed
+	x = $.cookie('posx')
+	x ?= 1000.5
+	y = $.cookie('posy')
+	y ?= 1000.5
+	zi = $.cookie('poszi')
+	zi ?= 11
+
+	# Initialize position
+	g_pos.set x, y, zi
 
 ################################################################################
 # Canvas movement & navigation
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Global variables
-
-# X and Y coordinates for where the canvas should be positioned under
-X = 1000.5
-Y = 1000.5
-
-# Zoom level, maps to an index in Z
-Z_LVL = 6
 
 # Anchor X and Y coordinates, established when clicking down on the canvas
 anchorX = null
@@ -84,12 +144,12 @@ anchorMX = null
 anchorMY = null
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 # Get raw transformation values
 # txp, typ: transform along x/y as percentage
 # sf: scale factor
 # I did a LOT of experimentation to arrive at these numbers, and they seem to
 # work just fine. I don't have a mathematical proof behind these though...
+
 render_getRawTransform = (x, y, z) ->
 
 	txp = (100.0 / 2000.0) * x
@@ -99,8 +159,8 @@ render_getRawTransform = (x, y, z) ->
 	{txp: txp, typ: typ, sf: sf}
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 # From a raw mouse coordinate, grab cooresponding x/y coord on the canvas
+
 render_getXYFromMouse = (mx, my) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
@@ -126,8 +186,8 @@ render_getXYFromMouse = (mx, my) ->
 	{ x: x, y: y, invalid: invalid }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 # From an x/y coord on the canvas, grab cooresponding raw mouse coordinate
+
 render_getMouseFromXY = (x, y) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
@@ -148,28 +208,34 @@ render_getMouseFromXY = (x, y) ->
 	{ mx: mx, my: my }
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-
 # Transform the canvas and relevant UI elements to reflect being positioned
 # at the given X,Y coord with the given zoom.
-render_applyPositionScale = (x, y, z) =>
+
+render_applyPos = () ->
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Move the canvas parent to the correct spot
 
 	# Grab raw transform values
-	t = render_getRawTransform x, y, z
+	t = render_getRawTransform g_pos.x, g_pos.y, g_pos.zl
 
 	# Format correctly and apply to element designed to handle these transforms
 	# Other DOM elements will resize and move appropriately
 	$('canvas').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Move the pixel selection to the correct spot
+	# Update the XYZ UI element at the top
+
+	$('.panel.pos-zoom').text "(#{g_pos.xf},#{g_pos.yf}) #{g_pos.zl}x"
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Animate the pixel selection reticule
+
+render_animateReticule = () ->
 
 	# Retrieve coordinates for top-left and bottom-right
-	# We floor x and y here to snap the selection to a grid.
-	tl = render_getMouseFromXY Math.floor(x), Math.floor(y)
-	br = render_getMouseFromXY 1 + Math.floor(x), 1 + Math.floor(y)
+	tl = render_getMouseFromXY g_pos.xf, g_pos.yf
+	br = render_getMouseFromXY 1 + g_pos.xf, 1 + g_pos.yf
 
 	# As simple as moving the selction SVG's parent to the correct spot.
 	$('.reticule').css {
@@ -179,10 +245,10 @@ render_applyPositionScale = (x, y, z) =>
 		height: (br.mx - tl.mx) + 'px'
 	}
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Update the XYZ UI element at the top
+	window.requestAnimationFrame render_animateReticule
 
-	$('.panel.pos-zoom').text "(" + Math.floor(x) + "," + Math.floor(y) + ") " + z + "x"
+# Initial call to start animation loop
+window.requestAnimationFrame render_animateReticule
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Handle mouse events
@@ -207,8 +273,8 @@ $ ->
 			$('canvas').removeClass 'smooth-animation'
 
 			# Establishing an anchor point
-			anchorX = X
-			anchorY = Y
+			anchorX = g_pos.x
+			anchorY = g_pos.y
 			anchorMX = e.originalEvent.x
 			anchorMY = e.originalEvent.y
 	
@@ -224,12 +290,12 @@ $ ->
 
 			# Obtain pixel that was clicked
 			coords = render_getXYFromMouse anchorMX, anchorMY
+			console.log coords
 
 			# If clicked in the canvas, center on that location
 			if !coords.invalid
-				X = Math.floor(coords.x) + 0.5
-				Y = Math.floor(coords.y) + 0.5
-				render_applyPositionScale X, Y, Z[Z_LVL]
+				g_pos.set Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null
+				render_applyPos()
 
 				# Also show the palette if we can
 				if ui_getStatus() == 'placetile'
@@ -252,64 +318,45 @@ $ ->
 			# Convert these coordinates in client space into a percentage of
 			# the element. What percent of the element have we traversed since
 			# mousedown?
-			moveXratio = moveXpx / (realsizeX * 10.0 * Z[Z_LVL])
-			moveYratio = moveYpx / (realsizeY * 10.0 * Z[Z_LVL])
+			moveXratio = moveXpx / (realsizeX * 10.0 * g_pos.zl)
+			moveYratio = moveYpx / (realsizeY * 10.0 * g_pos.zl)
 
 			# Set position appropriately
-			X = anchorX - (moveXratio * BOARD_WIDTH)
-			Y = anchorY - (moveYratio * BOARD_HEIGHT)
-
-			# Boundary checking
-			# TODO put this somewhere better, maybe make a class with set/get
-			if X < 0
-				X = 0
-			if Y < 0
-				Y = 0
-			if X >= BOARD_WIDTH
-				X = BOARD_WIDTH - (Number.EPSILON * BOARD_WIDTH)
-			if Y >= BOARD_HEIGHT
-				Y = BOARD_HEIGHT - (Number.EPSILON * BOARD_HEIGHT)
+			g_pos.set anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null
 
 			# Actually do the moving
-			render_applyPositionScale(X, Y, Z[Z_LVL])
+			render_applyPos()
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Process scroll wheel
 	
 	$('body').on 'wheel', (e) ->
 
-		# Zoom in and out appropriately if we can
-		if (e.originalEvent.deltaY < 0) && (Z_LVL < Z.length - 1)
-			Z_LVL += 1
-		else if (e.originalEvent.deltaY > 0) && (Z_LVL > 0)
-			Z_LVL -= 1
-		else return
+		# Determine zoom level to add from event
+		zl_add = 0
+		if e.originalEvent.deltaY < 0 then zl_add = +1
+		if e.originalEvent.deltaY > 0 then zl_add = -1
 
-		console.log 'a'
-		
+		# Apply zoom to position
+		g_pos.add 0, 0, zl_add
+
 		# Remove smoothing
 		$('canvas').removeClass 'smooth-animation'
 
-		console.log 'b'
-
 		# Render the canvas zoom
-		render_applyPositionScale(X, Y, Z[Z_LVL])
-
-		console.log 'c'
+		render_applyPos()
 
 		# Re-establish anchor point if we're holding down a mouse button
 		if e.buttons
 			coord = render_getXYFromMouse e.originalEvent.x, e.originalEvent.y
-			anchorX = X
-			anchorY = Y
+			anchorX = g_pos.x
+			anchorY = g_pos.y
 			anchorMX = e.originalEvent.x
 			anchorMY = e.originalEvent.y
 
 
 		# Re-add smoothing if we're not holding a mouse button
 		if !e.buttons then $('canvas').addClass 'smooth-animation'
-
-		console.log 'd'
 	
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Process mouse click
@@ -318,7 +365,7 @@ $ ->
 		#console.log(e.originalEvent)
 
 $ ->
-	render_applyPositionScale(X, Y, Z[Z_LVL])
+	render_applyPos()
 
 ################################################################################
 # Pallete Handling
@@ -403,13 +450,11 @@ $ ->
 		# Set message header
 		dv.setUint8(0, MSGTYPE_CPLACE)
 
-		# Determine coordinates and color
-		x = Math.floor X
-		y = Math.floor Y
+		# Determine color
 		c = $('.palette .colors .color.selected')[0].dataset.index
 
-		# Create a packed pixel with this data
-		pixel = ((x + (y * BOARD_WIDTH)) << 8) | c
+		# Create a packed pixel with color and position
+		pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c
 
 		# Plop the packed pixel in place
 		dv.setUint32(1, pixel)

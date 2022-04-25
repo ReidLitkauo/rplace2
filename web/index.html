@@ -7,13 +7,9 @@
 		<script src="/lang.js"></script>
 		<title>place</title>
 		<script type="text/javascript">(function() {
-  var BOARD_HEIGHT, BOARD_WIDTH, MSGTYPE_CPLACE, MSGTYPE_HBOARDANON, MSGTYPE_HBOARDAUTH, MSGTYPE_HRATELIMIT, MSGTYPE_HUPDATE, PALETTE, RATELIMIT_SEC, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, X, Y, Z, Z_LVL, anchorMX, anchorMY, anchorX, anchorY, render_applyPositionScale, render_getMouseFromXY, render_getRawTransform, render_getXYFromMouse, render_paintBoard, render_updateBoard, ui_clearPalette, ui_getStatus, ui_handleCooldown, ui_setStatus;
+  var BOARD_HEIGHT, BOARD_WIDTH, MSGTYPE_CPLACE, MSGTYPE_HBOARDANON, MSGTYPE_HBOARDAUTH, MSGTYPE_HRATELIMIT, MSGTYPE_HUPDATE, PALETTE, RATELIMIT_SEC, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, render_animateReticule, render_applyPos, render_getMouseFromXY, render_getRawTransform, render_getXYFromMouse, render_paintBoard, render_updateBoard, ui_clearPalette, ui_getStatus, ui_handleCooldown, ui_setStatus;
 
-  BOARD_WIDTH = 2000;
-
-  BOARD_HEIGHT = 2000;
-
-  Z = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 7, 10];
+  BOARD_WIDTH = BOARD_HEIGHT = 2000;
 
   MSGTYPE_HBOARDANON = 0x10;
 
@@ -41,11 +37,71 @@
 
   PALETTE = [[0x6D, 0x00, 0x1A, 0xFF], [0xBE, 0x00, 0x39, 0xFF], [0xFF, 0x45, 0x00, 0xFF], [0xFF, 0xA8, 0x00, 0xFF], [0xFF, 0xD6, 0x35, 0xFF], [0xFF, 0xF8, 0xB8, 0xFF], [0x00, 0xA3, 0x68, 0xFF], [0x00, 0xCC, 0x78, 0xFF], [0x7E, 0xED, 0x56, 0xFF], [0x00, 0x75, 0x6F, 0xFF], [0x00, 0x9E, 0xAA, 0xFF], [0x00, 0xCC, 0xC0, 0xFF], [0x24, 0x50, 0xA4, 0xFF], [0x36, 0x90, 0xEA, 0xFF], [0x51, 0xE9, 0xF4, 0xFF], [0x49, 0x3A, 0xC1, 0xFF], [0x6A, 0x5C, 0xFF, 0xFF], [0x94, 0xB3, 0xFF, 0xFF], [0x81, 0x1E, 0x9F, 0xFF], [0xB4, 0x4A, 0xC0, 0xFF], [0xE4, 0xAB, 0xFF, 0xFF], [0xDE, 0x10, 0x7F, 0xFF], [0xFF, 0x38, 0x81, 0xFF], [0xFF, 0x99, 0xAA, 0xFF], [0x6D, 0x48, 0x2F, 0xFF], [0x9C, 0x69, 0x26, 0xFF], [0xFF, 0xB4, 0x70, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x51, 0x52, 0x52, 0xFF], [0x89, 0x8D, 0x90, 0xFF], [0xD4, 0xD7, 0xD9, 0xFF], [0xFF, 0xFF, 0xFF, 0xFF]];
 
-  X = 1000.5;
+  window.g_pos = {
+    x: null,
+    y: null,
+    xf: null,
+    yf: null,
+    zi: null,
+    zl: null,
+    zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10],
+    set: function(x, y, zi) {
+      if (x == null) {
+        x = this.x;
+      }
+      if (y == null) {
+        y = this.y;
+      }
+      if (zi == null) {
+        zi = this.zi;
+      }
+      if (x < 0) {
+        x = 0;
+      }
+      if (y < 0) {
+        y = 0;
+      }
+      if (x >= BOARD_WIDTH) {
+        x = BOARD_WIDTH * (1 - Math.EPSILON);
+      }
+      if (y >= BOARD_HEIGHT) {
+        x = BOARD_HEIGHT * (1 - Math.EPSILON);
+      }
+      zi = Math.floor(zi);
+      if (zi < 0) {
+        zi = 0;
+      }
+      if (zi >= this.zooms.length) {
+        zi = this.zooms.length - 1;
+      }
+      this.x = x;
+      this.y = y;
+      this.xf = Math.floor(x);
+      this.yf = Math.floor(y);
+      this.zi = zi;
+      return this.zl = this.zooms[zi];
+    },
+    add: function(x, y, zi) {
+      return this.set(x + this.x, y + this.y, zi + this.zi);
+    }
+  };
 
-  Y = 1000.5;
-
-  Z_LVL = 6;
+  $(function() {
+    var x, y, zi;
+    x = $.cookie('posx');
+    if (x == null) {
+      x = 1000.5;
+    }
+    y = $.cookie('posy');
+    if (y == null) {
+      y = 1000.5;
+    }
+    zi = $.cookie('poszi');
+    if (zi == null) {
+      zi = 11;
+    }
+    return g_pos.set(x, y, zi);
+  });
 
   anchorX = null;
 
@@ -99,22 +155,27 @@
     };
   };
 
-  render_applyPositionScale = (function(_this) {
-    return function(x, y, z) {
-      var br, t, tl;
-      t = render_getRawTransform(x, y, z);
-      $('canvas').css('transform', "scale(" + t.sf + ") translate(-" + t.txp + "%, -" + t.typ + "%)");
-      tl = render_getMouseFromXY(Math.floor(x), Math.floor(y));
-      br = render_getMouseFromXY(1 + Math.floor(x), 1 + Math.floor(y));
-      $('.reticule').css({
-        top: tl.my + 'px',
-        left: tl.mx + 'px',
-        width: (br.my - tl.my) + 'px',
-        height: (br.mx - tl.mx) + 'px'
-      });
-      return $('.panel.pos-zoom').text("(" + Math.floor(x) + "," + Math.floor(y) + ") " + z + "x");
-    };
-  })(this);
+  render_applyPos = function() {
+    var t;
+    t = render_getRawTransform(g_pos.x, g_pos.y, g_pos.zl);
+    $('canvas').css('transform', "scale(" + t.sf + ") translate(-" + t.txp + "%, -" + t.typ + "%)");
+    return $('.panel.pos-zoom').text("(" + g_pos.xf + "," + g_pos.yf + ") " + g_pos.zl + "x");
+  };
+
+  render_animateReticule = function() {
+    var br, tl;
+    tl = render_getMouseFromXY(g_pos.xf, g_pos.yf);
+    br = render_getMouseFromXY(1 + g_pos.xf, 1 + g_pos.yf);
+    $('.reticule').css({
+      top: tl.my + 'px',
+      left: tl.mx + 'px',
+      width: (br.my - tl.my) + 'px',
+      height: (br.mx - tl.mx) + 'px'
+    });
+    return window.requestAnimationFrame(render_animateReticule);
+  };
+
+  window.requestAnimationFrame(render_animateReticule);
 
   $(function() {
     $('body').on('mousedown', function(e) {
@@ -125,8 +186,8 @@
         return anchorMY = null;
       } else {
         $('canvas').removeClass('smooth-animation');
-        anchorX = X;
-        anchorY = Y;
+        anchorX = g_pos.x;
+        anchorY = g_pos.y;
         anchorMX = e.originalEvent.x;
         return anchorMY = e.originalEvent.y;
       }
@@ -138,10 +199,10 @@
       var coords;
       if (e.originalEvent.x === anchorMX && e.originalEvent.y === anchorMY) {
         coords = render_getXYFromMouse(anchorMX, anchorMY);
+        console.log(coords);
         if (!coords.invalid) {
-          X = Math.floor(coords.x) + 0.5;
-          Y = Math.floor(coords.y) + 0.5;
-          render_applyPositionScale(X, Y, Z[Z_LVL]);
+          g_pos.set(Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null);
+          render_applyPos();
           if (ui_getStatus() === 'placetile') {
             return $('.palette').removeClass('hidden');
           }
@@ -155,56 +216,40 @@
         moveYpx = e.originalEvent.y - anchorMY;
         realsizeX = $('canvas').width();
         realsizeY = $('canvas').height();
-        moveXratio = moveXpx / (realsizeX * 10.0 * Z[Z_LVL]);
-        moveYratio = moveYpx / (realsizeY * 10.0 * Z[Z_LVL]);
-        X = anchorX - (moveXratio * BOARD_WIDTH);
-        Y = anchorY - (moveYratio * BOARD_HEIGHT);
-        if (X < 0) {
-          X = 0;
-        }
-        if (Y < 0) {
-          Y = 0;
-        }
-        if (X >= BOARD_WIDTH) {
-          X = BOARD_WIDTH - (Number.EPSILON * BOARD_WIDTH);
-        }
-        if (Y >= BOARD_HEIGHT) {
-          Y = BOARD_HEIGHT - (Number.EPSILON * BOARD_HEIGHT);
-        }
-        return render_applyPositionScale(X, Y, Z[Z_LVL]);
+        moveXratio = moveXpx / (realsizeX * 10.0 * g_pos.zl);
+        moveYratio = moveYpx / (realsizeY * 10.0 * g_pos.zl);
+        g_pos.set(anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null);
+        return render_applyPos();
       }
     });
     $('body').on('wheel', function(e) {
-      var coord;
-      if ((e.originalEvent.deltaY < 0) && (Z_LVL < Z.length - 1)) {
-        Z_LVL += 1;
-      } else if ((e.originalEvent.deltaY > 0) && (Z_LVL > 0)) {
-        Z_LVL -= 1;
-      } else {
-        return;
+      var coord, zl_add;
+      zl_add = 0;
+      if (e.originalEvent.deltaY < 0) {
+        zl_add = +1;
       }
-      console.log('a');
+      if (e.originalEvent.deltaY > 0) {
+        zl_add = -1;
+      }
+      g_pos.add(0, 0, zl_add);
       $('canvas').removeClass('smooth-animation');
-      console.log('b');
-      render_applyPositionScale(X, Y, Z[Z_LVL]);
-      console.log('c');
+      render_applyPos();
       if (e.buttons) {
         coord = render_getXYFromMouse(e.originalEvent.x, e.originalEvent.y);
-        anchorX = X;
-        anchorY = Y;
+        anchorX = g_pos.x;
+        anchorY = g_pos.y;
         anchorMX = e.originalEvent.x;
         anchorMY = e.originalEvent.y;
       }
       if (!e.buttons) {
-        $('canvas').addClass('smooth-animation');
+        return $('canvas').addClass('smooth-animation');
       }
-      return console.log('d');
     });
     return $('canvas').on('mouseup', function(e) {});
   });
 
   $(function() {
-    return render_applyPositionScale(X, Y, Z[Z_LVL]);
+    return render_applyPos();
   });
 
   ui_clearPalette = function() {
@@ -236,15 +281,13 @@
       return false;
     });
     return $('.palette form.submit').on('submit', function(e) {
-      var ab, c, dv, pixel, x, y;
+      var ab, c, dv, pixel;
       e.preventDefault();
       ab = new ArrayBuffer(5);
       dv = new DataView(ab);
       dv.setUint8(0, MSGTYPE_CPLACE);
-      x = Math.floor(X);
-      y = Math.floor(Y);
       c = $('.palette .colors .color.selected')[0].dataset.index;
-      pixel = ((x + (y * BOARD_WIDTH)) << 8) | c;
+      pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c;
       dv.setUint32(1, pixel);
       ws.send(dv);
       ui_setStatus(STATUS_COOLDOWN);
@@ -377,8 +420,8 @@
 
 }).call(this);
 </script>
-		<style>@font-face{font-family:"Reddit Sans";font-weight:normal;src:url("RedditSans-Regular.woff2")}@font-face{font-family:"Reddit Sans";font-weight:bold;src:url("RedditSans-Bold.woff2")}@font-face{font-family:"Reddit Mono";src:url("RedditMono-Bold.woff2")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.pos-zoom{font-family:"Reddit Mono";top:3vh;left:50vw;transform:translateX(-50%);padding:.3em 1em .2em;width:10em}.panel.status{font-family:"Reddit Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.3em 1em .2em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas{position:fixed;z-index:100;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges}.reticule{position:fixed;z-index:101;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}.canvas-transform{position:fixed;z-index:100;transform-origin:top left;width:500000vmin;height:500000vmin;top:50vh;left:50vw}.canvas-transform .canvas-parent{width:100%;height:100%;position:relative}.canvas-transform .canvas-parent canvas{position:absolute;top:0;left:0;width:100%;height:100%;image-rendering:pixelated;image-rendering:crisp-edges}.canvas-transform .canvas-parent .img-select-parent{position:absolute;pointer-events:none;top:.05vmin;left:.05vmin;width:250vmin;height:250vmin}.canvas-transform .canvas-parent .img-select-parent img{position:absolute;transform:scale(120%)}.canvas-transform.smooth-animation{transition:transform .5s ease-out}
+		<style>@font-face{font-family:"Reddit Sans";font-weight:normal;src:url("RedditSans-Regular.woff2")}@font-face{font-family:"Reddit Sans";font-weight:bold;src:url("RedditSans-Bold.woff2")}@font-face{font-family:"Reddit Mono";src:url("RedditMono-Bold.woff2")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.pos-zoom{font-family:"Reddit Mono";top:3vh;left:50vw;transform:translateX(-50%);padding:.3em 1em .2em;width:10em}.panel.status{font-family:"Reddit Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.3em 1em .2em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas{position:fixed;z-index:100;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges}.reticule{position:fixed;z-index:101;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}canvas.smooth-animation{transition:transform .5s ease-out}
 </style>
 	</head>
-	<body class="select-none"><div class="panel pos-zoom select-text"></div><div class="panel about"></div><div class="panel status"></div><div class="panel players"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas class="smooth-animation" noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="select.svg" /></div><div class="popup about"></div><img id="myimg" src="place.png" style="position: fixed; top: 200vh;" /></body>
+	<body class="select-none"><div class="panel pos-zoom select-text"></div><div class="panel about"></div><div class="panel status"></div><div class="panel players"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="select.svg" /></div><div class="popup about"></div><img id="myimg" src="place.png" style="position: fixed; top: 200vh;" /></body>
 </html>
