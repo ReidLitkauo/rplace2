@@ -18,6 +18,8 @@ type Config struct {
 
 	Serve_from string `fig:"serve_from" default:"web"`
 
+	Serve_port int    `fig:"serve_port" default:80`
+
 	Board struct {
 		Width  uint32 `fig:"width"  default:2000`
 		Height uint32 `fig:"height" default:2000`

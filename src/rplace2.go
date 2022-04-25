@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"time"
 	"os"
+	"strconv"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -66,8 +67,8 @@ func main () {
 	//==========================================================================
 	// Generic stuff
 
-	log.Info().Msg("Ready to listen and serve")
-	err := http.ListenAndServe(":8090", nil)
+	log.Info().Msg("Ready to listen and serve on port " + strconv.Itoa(g_cfg.Serve_port))
+	err := http.ListenAndServe(":" + strconv.Itoa(g_cfg.Serve_port), nil)
 	if err != nil { log.Error().Err(err).Msg("HTTP LISTEN/SERVE") }
 
 }

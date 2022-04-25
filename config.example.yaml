@@ -14,6 +14,9 @@ reddit_creds:
 # The directory all public files are served from
 serve_from: "web"
 
+# The port to serve from
+serve_port: 80
+
 # Board dimensions
 board:
   width:  2000
