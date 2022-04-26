@@ -1,12 +1,8 @@
 # Backups. No need to clog the repo with these.
 backups/bu_*
 
-# All files I've taken from Reddit.
-# I don't yet know their license, and I'd rather not upload them until I can
-# either find their license or replace them.
-web/Reddit*
-
 # The executable. You'll have to build this yourself.
+rplace2.exe
 rplace2
 
 # Configuration, defaults are in config.example.yaml

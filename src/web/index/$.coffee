@@ -93,8 +93,8 @@ window.g_pos = {
 		# Range checks and other validation
 		if x < 0 then x = 0
 		if y < 0 then y = 0
-		if x >= BOARD_WIDTH  then x = BOARD_WIDTH  * (1 - Math.EPSILON)
-		if y >= BOARD_HEIGHT then x = BOARD_HEIGHT * (1 - Math.EPSILON)
+		if x >= BOARD_WIDTH  then x = BOARD_WIDTH  * (1 - Number.EPSILON)
+		if y >= BOARD_HEIGHT then y = BOARD_HEIGHT * (1 - Number.EPSILON)
 		zi = Math.floor zi
 		if zi < 0 then zi = 0
 		if zi >= this.zooms.length then zi = this.zooms.length - 1
@@ -124,7 +124,7 @@ $ ->
 	y = $.cookie('posy')
 	y ?= 1000.5
 	zi = $.cookie('poszi')
-	zi ?= 11
+	zi ?= 6
 
 	# Initialize position
 	g_pos.set x, y, zi
@@ -227,6 +227,13 @@ render_applyPos = () ->
 	# Update the XYZ UI element at the top
 
 	$('.panel.pos-zoom').text "(#{g_pos.xf},#{g_pos.yf}) #{g_pos.zl}x"
+
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Miscellany
+
+	# Prevent artifacting/smearing
+	# https://stackoverflow.com/q/8840580
+	# TODO nothing worked :(
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Animate the pixel selection reticule
@@ -562,6 +569,8 @@ $ ->
 				window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus()
 
 			when STATUS_PLACETILE
+				g_pos.set g_pos.xf + 0.5, g_pos.yf + 0.5, null
+				render_applyPos()
 				$('.palette').removeClass('hidden')
 
 ################################################################################

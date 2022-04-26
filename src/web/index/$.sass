@@ -3,16 +3,26 @@
 
 // TODO determine licenses for these fonts, replace if needed
 @font-face
-	font-family: "Reddit Sans"
+	font-family: "Noto Sans"
 	font-weight: normal
-	src: url("RedditSans-Regular.woff2")
+	src: url("/resources/fonts/NotoSans-Regular.ttf")
 @font-face
-	font-family: "Reddit Sans"
+	font-family: "Noto Sans"
 	font-weight: bold
-	src: url("RedditSans-Bold.woff2")
+	src: url("/resources/fonts/NotoSans-Bold.ttf")
 @font-face
-	font-family: "Reddit Mono"
-	src: url("RedditMono-Bold.woff2")
+	font-family: "Noto Sans"
+	font-weight: normal
+	font-style: italic
+	src: url("/resources/fonts/NotoSans-Italic.ttf")
+@font-face
+	font-family: "Noto Sans"
+	font-weight: bold
+	font-style: italic
+	src: url("/resources/fonts/NotoSans-BoldItalic.ttf")
+@font-face
+	font-family: "Noto Sans Mono"
+	src: url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")
 
 ////////////////////////////////////////////////////////////////////////////////
 // General styles
@@ -64,20 +74,21 @@ body
 	text-align: center
 
 .panel.pos-zoom
-	font-family: "Reddit Mono"
+	font-family: "Noto Sans Mono"
+	font-weight: 700
 	top: 3vh
 	left: 50vw
 	transform: translateX(-50%)
-	padding: 0.3em 1em 0.2em
-	width: 10em
+	padding: 0.25em 1em 0.25em
+	width: 12em
 
 .panel.status
-	font-family: "Reddit Sans"
+	font-family: "Noto Sans"
 	font-weight: bold
 	bottom: 3vh
 	left: 50vw
 	transform: translateX(-50%)
-	padding: 0.3em 1em 0.2em
+	padding: 0.25em 1em 0.25em
 	width: 10em
 
 	// Styles for cooldnwn appearance
@@ -172,7 +183,7 @@ body
 
 canvas
 	position: fixed
-	z-index: 100
+	z-index: 0
 
 	// This is VERY important for the transforms to apply properly.
 	transform-origin: top left
@@ -193,7 +204,7 @@ canvas
 
 .reticule
 	position: fixed
-	z-index: 101
+	z-index: 1
 	pointer-events: none
 
 	img
