@@ -262,6 +262,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	// Check if account already exists in our systems
 
 	var role int
+	role = ROLE_ANON // Set a default to check later
 	rolerow := db.QueryRow("SELECT role FROM users WHERE username IS ?", me)
 	err = rolerow.Scan(&role)
 
@@ -272,49 +273,49 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// User exists already, no need to do anything else
-	// The websocket will determine if the user is auth/admn/bann
-	if err == nil {
-		http.Redirect(w, r, "/", 303)
-		return
-	}
-
-	//--------------------------------------------------------------------------
-	// User is a new register if we got this far
-	// Carry on with more checks
-
 	//--------------------------------------------------------------------------
 	// Check eligibility requirements
 
-	// Grab created/karma interfaces from json
-	created_iface, created_exists := mejson["created_utc"]
-	karma_iface, karma_exists := mejson["total_karma"]
+	// Only execute this step for new users
+	if role == ROLE_ANON {
 
-	// Validate existence
-	if !created_exists || !karma_exists {
-		log.Error().Msgf("Didn't receive both created and karma from Reddit")
-		http.Redirect(w, r, "/?validate=redditerror", 303)
-		return
-	}
+		// Grab created/karma interfaces from json
+		created_iface, created_exists := mejson["created_utc"]
+		karma_iface, karma_exists := mejson["total_karma"]
 
-	// Convert to primitives
-	created := int64(created_iface.(float64))
-	karma := int64(karma_iface.(float64))
+		// Validate existence
+		if !created_exists || !karma_exists {
+			log.Error().Msgf("Didn't receive both created and karma from Reddit")
+			http.Redirect(w, r, "/?validate=redditerror", 303)
+			return
+		}
 
-	// Perform comparison
-	if (created > time.Now().AddDate( -g_cfg.Account_requirements.Age_years, -g_cfg.Account_requirements.Age_months, -g_cfg.Account_requirements.Age_days ).Unix()) || (karma < int64(g_cfg.Account_requirements.Min_karma)) {
-		http.Redirect(w, r, "/?validate=belowthreshold", 303)
-		return
+		// Convert to primitives
+		created := int64(created_iface.(float64))
+		karma := int64(karma_iface.(float64))
+
+		// Perform comparison
+		if (created > time.Now().AddDate( -g_cfg.Account_requirements.Age_years, -g_cfg.Account_requirements.Age_months, -g_cfg.Account_requirements.Age_days ).Unix()) || (karma < int64(g_cfg.Account_requirements.Min_karma)) {
+			http.Redirect(w, r, "/?validate=belowthreshold", 303)
+			return
+		}
+
+
 	}
 
 	//--------------------------------------------------------------------------
 	// Create user entry
 
-	_, err = db.Exec("INSERT INTO users (username, role) VALUES (?,?)", me, ROLE_AUTH)
+	// Also only for new users
+	if role == ROLE_ANON {
 
-	if err != nil {
-		log.Error().Err(err).Msgf("Couldn't create user entry in database")
-		http.Redirect(w, r, "/?validate=servererror", 303)
+		_, err = db.Exec("INSERT INTO users (username, role) VALUES (?,?)", me, ROLE_AUTH)
+
+		if err != nil {
+			log.Error().Err(err).Msgf("Couldn't create user entry in database")
+			http.Redirect(w, r, "/?validate=servererror", 303)
+		}
+
 	}
 
 	//--------------------------------------------------------------------------
