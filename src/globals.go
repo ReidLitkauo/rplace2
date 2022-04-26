@@ -21,15 +21,28 @@ var g_db *sql.DB
 
 const (
 
-	// Hub message types
-	MSGTYPE_HBOARDANON = 0x10
-	MSGTYPE_HBOARDAUTH = 0x11
-	MSGTYPE_HUPDATE    = 0x12
-	MSGTYPE_HRATELIMIT = 0x13
+	// User roles
+
+	ROLE_ANON = 0x80 // Dummy role
+	ROLE_AUTH = 0x81
+	ROLE_BANN = 0x82
+	ROLE_ADMN = 0x83
+
+	// Server message types
+
+	MSG_S_BOARDANON = 0x20
+	MSG_S_BOARDAUTH = 0x21
+	MSG_S_BOARDBANN = 0x22
+	MSG_S_BOARDADMN = 0x23
+
+	MSG_S_UPDATE    = 0x30
+
+	MSG_S_COOLDOWN  = 0x40
 
 	// Client message types
-	MSGTYPE_CPLACE = 0x20
-	MSGTYPE_CRECT  = 0x21
+
+	MSG_C_PLACE = 0xA0
+	//MSG_C_RECT  = 0xA1
 
 )
 

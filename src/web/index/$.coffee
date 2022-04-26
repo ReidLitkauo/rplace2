@@ -2,16 +2,27 @@
 # Constants
 # Must be kept the same as the ones used by the server
 
-BOARD_WIDTH = BOARD_HEIGHT = 2000
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Websocket message types
 
-MSGTYPE_HBOARDANON = 0x10
-MSGTYPE_HBOARDAUTH = 0x11
-MSGTYPE_HUPDATE    = 0x12
-MSGTYPE_HRATELIMIT = 0x13
+# Server messages
 
-MSGTYPE_CPLACE = 0x20
+MSG_S_BOARDANON = 0x20
+MSG_S_BOARDAUTH = 0x21
+MSG_S_BOARDBANN = 0x22
+MSG_S_BOARDADMN = 0x23
 
-RATELIMIT_SEC = 10
+MSG_S_UPDATE    = 0x30
+
+MSG_S_COOLDOWN  = 0x40
+
+# Client messages
+
+MSG_C_PLACE     = 0xA0
+#MSG_C_RECT      = 0xA1
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Statuses
 
 STATUS_LOADING   = 'loading'
 STATUS_LINKACCT  = 'linkacct'
@@ -19,6 +30,10 @@ STATUS_PLACETILE = 'placetile'
 STATUS_CONNERR   = 'connerr'
 STATUS_DCONN     = 'dconn'
 STATUS_COOLDOWN  = 'cooldown'
+STATUS_BANNED    = 'banned'
+
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Color palette
 
 PALETTE = [
 	[0x6D, 0x00, 0x1A, 0xFF],
@@ -55,8 +70,12 @@ PALETTE = [
 	[0xFF, 0xFF, 0xFF, 0xFF],
 ]
 
-################################################################################
-# Globals
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Miscellany
+
+BOARD_WIDTH = BOARD_HEIGHT = 2000
+
+RATELIMIT_SEC = 10
 
 ################################################################################
 # Canvas positioning
@@ -455,7 +474,7 @@ $ ->
 		dv = new DataView(ab)
 
 		# Set message header
-		dv.setUint8(0, MSGTYPE_CPLACE)
+		dv.setUint8(0, MSG_C_PLACE)
 
 		# Determine color
 		c = $('.palette .colors .color.selected')[0].dataset.index
@@ -494,7 +513,7 @@ ui_setStatus = (s, timeleft = RATELIMIT_SEC) ->
 	# Special considerations
 
 	# Do we need to widen the status bar?
-	if s == STATUS_LINKACCT
+	if s == STATUS_LINKACCT || s == STATUS_BANNED
 		$('.panel.status').addClass 'wide'
 	else
 		$('.panel.status').removeClass 'wide'
@@ -592,7 +611,7 @@ render_paintBoard = (wsdv) ->
 	# Put image data
 	cx.putImageData id, 0, 0
 
-# Pass a DataView into a MSGTYPE_HUPDATE message, and this function will
+# Pass a DataView into a MSG_S_UPDATE message, and this function will
 # render the update to the board.
 render_updateBoard = (wsdv) ->
 
@@ -612,7 +631,12 @@ render_updateBoard = (wsdv) ->
 	cx.putImageData id, 0, 0
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+# Initialization and message processing
+
 $ ->
+
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Initialization
 
 	# Build out websocket URL
 	wsurl = "ws://" + document.location.host + "/ws"
@@ -624,8 +648,10 @@ $ ->
 	# Handle errors and closure
 	window.ws.onerror = window.ws.onclose = (e) ->
 		ui_setStatus STATUS_DCONN
-
+	
+	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Handle messages
+
 	window.ws.onmessage = ({data}) ->
 		data.arrayBuffer().then (raw) ->
 			d = new DataView(raw)
@@ -634,26 +660,46 @@ $ ->
 			# Process message
 			switch msgtype
 
-				# Receiving board for authenticated user
-				when MSGTYPE_HBOARDAUTH
+				#       #       #       #       #       #       #       #       
+				# Unauthenticated user
+
+				when MSG_S_BOARDANON
+
+					# Tell user to link account to proceed
+					ui_setStatus STATUS_LINKACCT
+				
+				#       #       #       #       #       #       #       #       
+				# Standard authenticated user
+
+				when MSG_S_BOARDAUTH
+
+					# Show appropriate buttons
+					$('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass 'hidden'
 
 					# If we're not rate-limited, allow for pixel placement
 					if ui_getStatus() != STATUS_COOLDOWN then ui_setStatus STATUS_PLACETILE
 
-					# Show the board
-					render_paintBoard d
+				#       #       #       #       #       #       #       #       
+				# Admin user
 
-				# User is not authenticated
-				# Tell user to link account to proceed
-				when MSGTYPE_HBOARDANON
-					ui_setStatus STATUS_LINKACCT
-					render_paintBoard d
-				
+				#       #       #       #       #       #       #       #       
+				# Banned user
+
+				when MSG_S_BOARDBANN
+					ui_setStatus STATUS_BANNED
+
+
 				# Board update
-				when MSGTYPE_HUPDATE
+				when MSG_S_UPDATE
 					render_updateBoard d
 				
 				# Ratelimit message
-				when MSGTYPE_HRATELIMIT
+				when MSG_S_COOLDOWN
 					ui_setStatus STATUS_COOLDOWN, d.getUint32 1
+			
+			# Multiple message types tell us to paint the board
+			# Since you can't meet two cases in a single switch ...
+			# Process board drawing here.
+			if msgtype is MSG_S_BOARDADMN || msgtype is MSG_S_BOARDANON || msgtype is MSG_S_BOARDAUTH || msgtype is MSG_S_BOARDBANN
+				render_paintBoard d
 

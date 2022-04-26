@@ -55,4 +55,8 @@ window.lang = {
 		'en': "Disconnected",
 	},
 
+	'status_banned': {
+		'en': "Your account is banned",
+	},
+
 }

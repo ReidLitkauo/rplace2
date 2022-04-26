@@ -1,3 +1,13 @@
+// STUFF I STILL NEED TODO
+// Chat + link to Discord
+// About page w/ links to socials & attribution
+// Admin tools - ban users, instaplace, image/rect
+// Bot to place images via button in page bottom left
+// Touchscreen support
+// Error msgs for Reddit acct linkage
+// Loading indicator for placing pixel
+// Settings - log out, cookies for lang/pos
+
 package main
 
 import (

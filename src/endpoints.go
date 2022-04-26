@@ -20,7 +20,6 @@ import (
 // redditerror
 // userdenied
 // belowthreshold
-// success
 
 //==============================================================================
 // Redirect to Reddit to start linking process
@@ -260,7 +259,32 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	}
 
 	//--------------------------------------------------------------------------
-	// Check account eligibility requirements
+	// Check if account already exists in our systems
+
+	var role int
+	rolerow := db.QueryRow("SELECT role FROM users WHERE username IS ?", me)
+	err = rolerow.Scan(&role)
+
+	// Found an error while processing
+	if err != nil && err != sql.ErrNoRows {
+		log.Error().Err(err).Msg("")
+		http.Redirect(w, r, "/?validate=servererror", 303)
+		return
+	}
+
+	// User exists already, no need to do anything else
+	// The websocket will determine if the user is auth/admn/bann
+	if err == nil {
+		http.Redirect(w, r, "/", 303)
+		return
+	}
+
+	//--------------------------------------------------------------------------
+	// User is a new register if we got this far
+	// Carry on with more checks
+
+	//--------------------------------------------------------------------------
+	// Check eligibility requirements
 
 	// Grab created/karma interfaces from json
 	created_iface, created_exists := mejson["created_utc"]
@@ -281,6 +305,16 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	if (created > time.Now().AddDate( -g_cfg.Account_requirements.Age_years, -g_cfg.Account_requirements.Age_months, -g_cfg.Account_requirements.Age_days ).Unix()) || (karma < int64(g_cfg.Account_requirements.Min_karma)) {
 		http.Redirect(w, r, "/?validate=belowthreshold", 303)
 		return
+	}
+
+	//--------------------------------------------------------------------------
+	// Create user entry
+
+	_, err = db.Exec("INSERT INTO users (username, role) VALUES (?,?)", me, ROLE_AUTH)
+
+	if err != nil {
+		log.Error().Err(err).Msgf("Couldn't create user entry in database")
+		http.Redirect(w, r, "/?validate=servererror", 303)
 	}
 
 	//--------------------------------------------------------------------------
@@ -307,12 +341,12 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	}
 
 	//--------------------------------------------------------------------------
-	// SESSION SET - RETURN TO USER
+	// USER VERIFIED - SESSION SET - RETURN TO USER
 
 	// Set cookie
 	w.Header().Set("Set-Cookie", "session=" + session + "; Path=/; Max-Age=3155695200")
 
 	// Return the user to the application
-	http.Redirect(w, r, "/?validate=success", 303)
+	http.Redirect(w, r, "/", 303)
 
 }

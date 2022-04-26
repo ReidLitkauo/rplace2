@@ -101,7 +101,7 @@ func NewWebSocketHub () *WebSocketHub {
 // Public methods
 
 //==============================================================================
-func (this *WebSocketHub) GetInitializationMessages (username string) []*websocket.PreparedMessage {
+func (this *WebSocketHub) GetInitializationMessages (username string, role int) []*websocket.PreparedMessage {
 
 	//--------------------------------------------------------------------------
 	// Initialization
@@ -111,9 +111,13 @@ func (this *WebSocketHub) GetInitializationMessages (username string) []*websock
 	//--------------------------------------------------------------------------
 	// Prepare board message
 
-	// Determine correct message type to send
-	msgboardtype := MSGTYPE_HBOARDANON
-	if username != "" { msgboardtype = MSGTYPE_HBOARDAUTH }
+	// Map role to message type
+	msgboardtype := MSG_S_BOARDANON
+	switch role {
+		case ROLE_ADMN: msgboardtype = MSG_S_BOARDADMN
+		case ROLE_AUTH: msgboardtype = MSG_S_BOARDAUTH
+		case ROLE_BANN: msgboardtype = MSG_S_BOARDBANN
+	}
 
 	// Prepend the correct message type to the stored board
 	msgboardraw := append( []byte{ byte(msgboardtype) }, this.board... )
@@ -137,7 +141,7 @@ func (this *WebSocketHub) GetInitializationMessages (username string) []*websock
 		msgrateraw := make([]byte, 5)
 
 		// Set message type
-		msgrateraw[0] = MSGTYPE_HRATELIMIT
+		msgrateraw[0] = MSG_S_COOLDOWN
 
 		// Write cooldown into message
 		binary.BigEndian.PutUint32( msgrateraw[1:5], uint32(cooldown) )
@@ -268,7 +272,7 @@ func (this *WebSocketHub) processUpdate () {
 	msgraw := make([]byte, 1 + (4 * len(this.changes)))
 
 	// Set message type
-	msgraw[0] = MSGTYPE_HUPDATE
+	msgraw[0] = MSG_S_UPDATE
 
 	//--------------------------------------------------------------------------
 	// Processing

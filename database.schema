@@ -8,3 +8,10 @@ CREATE TABLE sessions (
 	username VARCHAR(25),
 	ts_create DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE users (
+	username VARCHAR(25),
+	role INTEGER,
+	ts_create DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+

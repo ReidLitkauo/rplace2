@@ -22,6 +22,9 @@ type WebSocketClient struct {
 	// This client's username, if any
 	Username string
 
+	// This user's role
+	Role int
+
 	//==========================================================================
 	// Private fields
 
@@ -53,14 +56,20 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	// Variable declaration
 	var session string
 	var username string
+	role := (int)(ROLE_ANON) // Default
+
+	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	// Get session from query
 
 	// Retrieve session cookie
 	session = r.URL.Query().Get("session")
 
-	// If we have a session cookie, retrieve associated username
+	// We actually do have a session
 	if session != "" {
 
-		// Extract username
+		// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		// Get username from session
+
 		userrow := db.QueryRow("SELECT username FROM sessions WHERE session IS ?", session)
 		err := userrow.Scan(&username)
 
@@ -80,6 +89,24 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 			default:
 				log.Error().Err(err).Msg("")
 				return nil
+
+		}
+
+		// Found a username
+		if username != "" {
+
+			// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+			// Get role from username
+
+			rolerow := db.QueryRow("SELECT role FROM users WHERE username IS ?", username)
+			err = rolerow.Scan(&role)
+
+			// Not finding a role after finding a username is bad news bears
+			// That means something weeeeeird happened
+			if err != nil {
+				log.Error().Err(err).Msgf("Couldn't find user %s in users table", username)
+				return nil
+			}
 
 		}
 
@@ -109,10 +136,11 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	// Create the new WSClient object
 	wsc := &WebSocketClient{
 		Username: username,
-		wsh: wsh,
-		ws: ws,
-		send: make(chan *websocket.PreparedMessage, 256),
-		session: session,
+		Role:     role,
+		wsh:      wsh,
+		ws:       ws,
+		send:     make(chan *websocket.PreparedMessage, 256),
+		session:  session,
 	}	
 
 	// Request registration to the hub
@@ -123,7 +151,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	if username != "" { go wsc.handleRecv() }
 
 	// Send initialization message
-	for _, msg := range(wsh.GetInitializationMessages(username)) {
+	for _, msg := range(wsh.GetInitializationMessages(username, role)) {
 		wsc.SendMessage(msg)
 	}
 
@@ -187,7 +215,7 @@ func (this *WebSocketClient) handleRecv () {
 		switch msg[0] {
 
 			// Place a pixel
-			case MSGTYPE_CPLACE:
+			case MSG_C_PLACE:
 
 				// Convert the next four bytes into an encoded uint32
 				// and add to the hub's queue
