@@ -8,6 +8,11 @@
 // Loading indicator for placing pixel
 // Settings - log out, cookies for lang/pos
 
+// /web/resources/bot.svg
+// https://www.svgrepo.com/svg/279058/robot
+// https://www.svgrepo.com/svg/359578/paintbrush
+// https://www.svgrepo.com/svg/4029/picture
+
 package main
 
 import (
