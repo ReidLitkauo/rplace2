@@ -5,8 +5,17 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 		<script src="/jquery.cookie.js"></script>
 		<script src="/lang.js"></script>
-		<title>place</title><script src="/resources/UPNG.js"></script>
+		
+<title>place</title><script src="/resources/UPNG.js"></script>
 		<script type="text/javascript">(function() {
+  //###############################################################################
+  // Constants
+  // Must be kept the same as the ones used by the server
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Websocket message types
+
+  // Server messages
   var BOARD_HEIGHT, BOARD_WIDTH, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, RATELIMIT_SEC, STATUS_BANNED, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, render_animateReticule, render_applyPos, render_getMouseFromXY, render_getRawTransform, render_getXYFromMouse, render_paintBoard, render_updateBoard, ui_clearPalette, ui_getStatus, ui_handleCooldown, ui_setStatus;
 
   MSG_S_BOARDANON = 0x20;
@@ -21,8 +30,13 @@
 
   MSG_S_COOLDOWN = 0x40;
 
+  // Client messages
   MSG_C_PLACE = 0xA0;
 
+  //MSG_C_RECT      = 0xA1
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Statuses
   STATUS_LOADING = 'loading';
 
   STATUS_LINKACCT = 'linkacct';
@@ -37,21 +51,37 @@
 
   STATUS_BANNED = 'banned';
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Color palette
   PALETTE = [[0x6D, 0x00, 0x1A, 0xFF], [0xBE, 0x00, 0x39, 0xFF], [0xFF, 0x45, 0x00, 0xFF], [0xFF, 0xA8, 0x00, 0xFF], [0xFF, 0xD6, 0x35, 0xFF], [0xFF, 0xF8, 0xB8, 0xFF], [0x00, 0xA3, 0x68, 0xFF], [0x00, 0xCC, 0x78, 0xFF], [0x7E, 0xED, 0x56, 0xFF], [0x00, 0x75, 0x6F, 0xFF], [0x00, 0x9E, 0xAA, 0xFF], [0x00, 0xCC, 0xC0, 0xFF], [0x24, 0x50, 0xA4, 0xFF], [0x36, 0x90, 0xEA, 0xFF], [0x51, 0xE9, 0xF4, 0xFF], [0x49, 0x3A, 0xC1, 0xFF], [0x6A, 0x5C, 0xFF, 0xFF], [0x94, 0xB3, 0xFF, 0xFF], [0x81, 0x1E, 0x9F, 0xFF], [0xB4, 0x4A, 0xC0, 0xFF], [0xE4, 0xAB, 0xFF, 0xFF], [0xDE, 0x10, 0x7F, 0xFF], [0xFF, 0x38, 0x81, 0xFF], [0xFF, 0x99, 0xAA, 0xFF], [0x6D, 0x48, 0x2F, 0xFF], [0x9C, 0x69, 0x26, 0xFF], [0xFF, 0xB4, 0x70, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x51, 0x52, 0x52, 0xFF], [0x89, 0x8D, 0x90, 0xFF], [0xD4, 0xD7, 0xD9, 0xFF], [0xFF, 0xFF, 0xFF, 0xFF]];
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Miscellany
   BOARD_WIDTH = BOARD_HEIGHT = 2000;
 
   RATELIMIT_SEC = 10;
 
+  //###############################################################################
+  // Canvas positioning
   window.g_pos = {
+    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    // Position variables
+
+    // X/Y coords of screen center
     x: null,
     y: null,
+    // Floored versions of coords
     xf: null,
     yf: null,
+    // Zoom index and zoom level
     zi: null,
     zl: null,
+    // Valid values for zoom level
     zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10],
+    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    // Set position
     set: function(x, y, zi) {
+      // Check for null values, which indicate to not change that coord
       if (x == null) {
         x = this.x;
       }
@@ -61,6 +91,7 @@
       if (zi == null) {
         zi = this.zi;
       }
+      // Range checks and other validation
       if (x < 0) {
         x = 0;
       }
@@ -80,6 +111,8 @@
       if (zi >= this.zooms.length) {
         zi = this.zooms.length - 1;
       }
+      
+      // Set values
       this.x = x;
       this.y = y;
       this.xf = Math.floor(x);
@@ -87,13 +120,18 @@
       this.zi = zi;
       return this.zl = this.zooms[zi];
     },
+    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    // Add position
     add: function(x, y, zi) {
       return this.set(x + this.x, y + this.y, zi + this.zi);
     }
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Initialization
   $(function() {
     var x, y, zi;
+    // Grab position data from cookie, set to defaults if needed
     x = $.cookie('posx');
     if (x == null) {
       x = 1000.5;
@@ -106,17 +144,32 @@
     if (zi == null) {
       zi = 6;
     }
+    // Initialize position
     return g_pos.set(x, y, zi);
   });
 
+  //###############################################################################
+  // Canvas movement & navigation
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Global variables
+
+  // Anchor X and Y coordinates, established when clicking down on the canvas
   anchorX = null;
 
   anchorY = null;
 
+  // Corresponding mouse coordinates for those X and Y coords
   anchorMX = null;
 
   anchorMY = null;
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Get raw transformation values
+  // txp, typ: transform along x/y as percentage
+  // sf: scale factor
+  // I did a LOT of experimentation to arrive at these numbers, and they seem to
+  // work just fine. I don't have a mathematical proof behind these though...
   render_getRawTransform = function(x, y, z) {
     var sf, txp, typ;
     txp = (100.0 / 2000.0) * x;
@@ -129,30 +182,46 @@
     };
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // From a raw mouse coordinate, grab cooresponding x/y coord on the canvas
   render_getXYFromMouse = function(mx, my) {
     var bb, invalid, x, xc, xp, y, yc, yp;
+    // Grab canvas bounding box, this will take transforms into consideration
     bb = $('canvas')[0].getBoundingClientRect();
+    // Re-orient mouse coordinates to use top-left of canvas as origin
     xc = mx - bb.x;
     yc = my - bb.y;
+    // Scale according to canvas dimensions
     xp = xc / bb.width;
     yp = yc / bb.height;
+    // We now have coordinates as a percentage of canvas width/height
+    // Multiply by number of pixels to get final result
     x = xp * BOARD_WIDTH;
     y = yp * BOARD_HEIGHT;
+    // Scan for invalid outputs
     invalid = x < 0 || y < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT;
     return {
+      
+      // Success
       x: x,
       y: y,
       invalid: invalid
     };
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // From an x/y coord on the canvas, grab cooresponding raw mouse coordinate
   render_getMouseFromXY = function(x, y) {
     var bb, mx, my, xc, xp, yc, yp;
+    // Grab canvas bounding box, this will take transforms into consideration
     bb = $('canvas')[0].getBoundingClientRect();
+    // Get coords as percentage of canvas TODO
     xp = x / BOARD_WIDTH;
     yp = y / BOARD_HEIGHT;
+    // Scale according to canvas dimensions
     xc = xp * bb.width;
     yc = yp * bb.height;
+    // Re-orient mouse coordinates to correct for top-left of canvas
     mx = xc + bb.x;
     my = yc + bb.y;
     return {
@@ -161,17 +230,39 @@
     };
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Transform the canvas and relevant UI elements to reflect being positioned
+  // at the given X,Y coord with the given zoom.
   render_applyPos = function() {
     var t;
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Move the canvas parent to the correct spot
+
+    // Grab raw transform values
     t = render_getRawTransform(g_pos.x, g_pos.y, g_pos.zl);
-    $('canvas').css('transform', "scale(" + t.sf + ") translate(-" + t.txp + "%, -" + t.typ + "%)");
-    return $('.panel.pos-zoom').text("(" + g_pos.xf + "," + g_pos.yf + ") " + g_pos.zl + "x");
+    // Format correctly and apply to element designed to handle these transforms
+    // Other DOM elements will resize and move appropriately
+    $('canvas').css('transform', `scale(${t.sf}) translate(-${t.txp}%, -${t.typ}%)`);
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Update the XYZ UI element at the top
+    return $('.panel.pos-zoom').text(`(${g_pos.xf},${g_pos.yf}) ${g_pos.zl}x`);
   };
 
+  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  // Miscellany
+
+  // Prevent artifacting/smearing
+  // https://stackoverflow.com/q/8840580
+  // TODO nothing worked :(
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Animate the pixel selection reticule
   render_animateReticule = function() {
     var br, tl;
+    // Retrieve coordinates for top-left and bottom-right
     tl = render_getMouseFromXY(g_pos.xf, g_pos.yf);
     br = render_getMouseFromXY(1 + g_pos.xf, 1 + g_pos.yf);
+    // As simple as moving the selction SVG's parent to the correct spot.
     $('.reticule').css({
       top: tl.my + 'px',
       left: tl.mx + 'px',
@@ -181,55 +272,87 @@
     return window.requestAnimationFrame(render_animateReticule);
   };
 
+  // Initial call to start animation loop
   window.requestAnimationFrame(render_animateReticule);
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Handle mouse events
   $(function() {
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Process click-and-drag
+
+    // Establish an anchor point upon mousedown
     $('body').on('mousedown', function(e) {
+      // Do not establish an anchor point if clicking on UI elements
       if ($(e.target).is('.palette, .panel') || $(e.target).parents().is('.palette, .panel')) {
         anchorX = null;
         anchorY = null;
         anchorMX = null;
         return anchorMY = null;
       } else {
+        // Remove transition smoothing, we want to be responsive
         $('canvas').removeClass('smooth-animation');
+        // Establishing an anchor point
         anchorX = g_pos.x;
         anchorY = g_pos.y;
         anchorMX = e.originalEvent.x;
         return anchorMY = e.originalEvent.y;
       }
     });
+    
+    // Re-add animation smoothing
     $('body').on('mouseup', function(e) {
       return $('canvas').addClass('smooth-animation');
     });
+    
+    // Set coords and open palette if clicked
     $('body').on('click', function(e) {
       var coords;
+      // If clicked on a single spot, center the canvas there
       if (e.originalEvent.x === anchorMX && e.originalEvent.y === anchorMY) {
+        // Obtain pixel that was clicked
         coords = render_getXYFromMouse(anchorMX, anchorMY);
         console.log(coords);
         if (!coords.invalid) {
           g_pos.set(Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null);
           render_applyPos();
+          // Also show the palette if we can
           if (ui_getStatus() === 'placetile') {
             return $('.palette').removeClass('hidden');
           }
         }
       }
     });
+    // Use that anchor point when the mouse moves
     $('body').on('mousemove', function(e) {
       var moveXpx, moveXratio, moveYpx, moveYratio, realsizeX, realsizeY;
+      
+      // Only move if a mouse button is pressed and anchor was set
       if (e.buttons && anchorX !== null) {
+        // How far away from the anchor is the mouse now?
         moveXpx = e.originalEvent.x - anchorMX;
         moveYpx = e.originalEvent.y - anchorMY;
+        
+        // Get the size of the element in pixels
         realsizeX = $('canvas').width();
         realsizeY = $('canvas').height();
+        
+        // Convert these coordinates in client space into a percentage of
+        // the element. What percent of the element have we traversed since
+        // mousedown?
         moveXratio = moveXpx / (realsizeX * 10.0 * g_pos.zl);
         moveYratio = moveYpx / (realsizeY * 10.0 * g_pos.zl);
+        // Set position appropriately
         g_pos.set(anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null);
+        // Actually do the moving
         return render_applyPos();
       }
     });
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Process scroll wheel
     $('body').on('wheel', function(e) {
       var coord, zl_add;
+      // Determine zoom level to add from event
       zl_add = 0;
       if (e.originalEvent.deltaY < 0) {
         zl_add = +1;
@@ -237,9 +360,13 @@
       if (e.originalEvent.deltaY > 0) {
         zl_add = -1;
       }
+      // Apply zoom to position
       g_pos.add(0, 0, zl_add);
+      // Remove smoothing
       $('canvas').removeClass('smooth-animation');
+      // Render the canvas zoom
       render_applyPos();
+      // Re-establish anchor point if we're holding down a mouse button
       if (e.buttons) {
         coord = render_getXYFromMouse(e.originalEvent.x, e.originalEvent.y);
         anchorX = g_pos.x;
@@ -251,109 +378,181 @@
         return $('canvas').addClass('smooth-animation');
       }
     });
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Process mouse click
     return $('canvas').on('mouseup', function(e) {});
   });
 
+  //console.log(e.originalEvent)
   $(function() {
     return render_applyPos();
   });
 
+  //###############################################################################
+  // Pallete Handling
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Helper functions
+
+  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  // Clean and hide the palette UI
   ui_clearPalette = function() {
+    // Clean up the palette UI element and hide it
+
+    // Disable submit button
     $('.palette form.submit button').attr('disabled', 'disabled');
+    // De-select all colors
     $('.palette .colors .color').removeClass('selected');
+    // Clear placement reticule color
     $('.reticule').css('background-color', "transparent");
+    // And hide the UI
     return $('.palette').addClass('hidden');
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Initialization and event handling
   $(function() {
     var k, ref, ref1, rgb_bdr, rgb_bg, v;
+//   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+// Create all the color options from palette
     for (k in PALETTE) {
       v = PALETTE[k];
-      rgb_bg = "rgb(" + v[0] + "," + v[1] + "," + v[2] + ")";
+      // Grab background color from palette
+      rgb_bg = `rgb(${v[0]},${v[1]},${v[2]})`;
+      // Same as background color, except for white
       rgb_bdr = ((v[0] === (ref1 = v[1]) && ref1 === (ref = v[2])) && ref === 0xFF) ? "black" : rgb_bg;
-      $('.palette .colors').append($("<div data-index='" + k + "' class='color' style='background-color: " + rgb_bg + "; border-color: " + rgb_bdr + ";'></div>"));
+      // Append correctly-formatted element
+      $('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`));
     }
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Color event handling
     $('.palette .colors .color').on('click', function(e) {
       var c;
+      // Ensure only the selected color is pressed
       $('.palette .colors .color').removeClass('selected');
       $(e.target).addClass('selected');
+      // Change placement reticule to match selected color
       c = PALETTE[e.target.dataset.index];
-      $('.reticule').css('background-color', "rgb( " + c[0] + ", " + c[1] + ", " + c[2] + " )");
+      $('.reticule').css('background-color', `rgb( ${c[0]}, ${c[1]}, ${c[2]} )`);
+      // Enable the submit button
       return $('.palette form.submit button')[0].removeAttribute('disabled');
     });
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Button event handling
+
+    //       #       #       #       #       #       #       #       #       #   
+    // Cancel placement
     $('.palette form.cancel').on('submit', function(e) {
       e.preventDefault();
       ui_clearPalette();
       return false;
     });
+    //       #       #       #       #       #       #       #       #       #   
+    // Submit placement
     return $('.palette form.submit').on('submit', function(e) {
       var ab, c, dv, pixel;
       e.preventDefault();
+      // Craft and send a pixel-placement message
       ab = new ArrayBuffer(5);
       dv = new DataView(ab);
+      // Set message header
       dv.setUint8(0, MSG_C_PLACE);
+      // Determine color
       c = $('.palette .colors .color.selected')[0].dataset.index;
+      // Create a packed pixel with color and position
       pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c;
+      // Plop the packed pixel in place
       dv.setUint32(1, pixel);
+      // ... and send
       ws.send(dv);
+      // Show timeout status
       ui_setStatus(STATUS_COOLDOWN);
+      // Clean the palette UI
       ui_clearPalette();
       return false;
     });
   });
 
-  ui_setStatus = function(s, timeleft) {
-    if (timeleft == null) {
-      timeleft = RATELIMIT_SEC;
-    }
+  //###############################################################################
+  // Status Handling
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  ui_setStatus = function(s, timeleft = RATELIMIT_SEC) {
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Common preprocessing
+
+    // Set dataset attribute right away
     $('.panel.status')[0].dataset.mode = s;
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Special considerations
+
+    // Do we need to widen the status bar?
     if (s === STATUS_LINKACCT || s === STATUS_BANNED) {
       $('.panel.status').addClass('wide');
     } else {
       $('.panel.status').removeClass('wide');
     }
+    
+    // Special handling for cooldown status
     if (s === STATUS_COOLDOWN) {
       $('.panel.status').html("<img class='timeleft' src='/timer.svg' /> <div class='timeleft'></div>");
       ui_handleCooldown(timeleft);
       return;
     }
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Show status to user
     return $('.panel.status').text(window.lang['status_' + s]['en']);
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   ui_getStatus = function() {
     return $('.panel.status')[0].dataset.mode;
   };
 
-  ui_handleCooldown = function(timeleft) {
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Show cooldown message to user
+  ui_handleCooldown = function(timeleft = RATELIMIT_SEC) {
     var interval, intervalfn;
-    if (timeleft == null) {
-      timeleft = RATELIMIT_SEC;
-    }
     intervalfn = function() {
       var h, hs, m, ms, s, ss;
+      // Clear the interval if we don't need it anymore
       if (timeleft <= 0) {
         $('.panel.status .timeleft').html('');
         window.clearTimeout(interval);
         ui_setStatus(STATUS_PLACETILE);
         return;
       }
+      
+      // Determine hours/minutes/seconds left
       h = Math.floor(timeleft / 3600);
       m = Math.floor((timeleft % 3600) / 60);
       s = Math.floor(timeleft % 60);
+      // Add padding zeroes if needed
       hs = (h < 10 ? "0" : "") + h;
       ms = (m < 10 ? "0" : "") + m;
       ss = (s < 10 ? "0" : "") + s;
-      $('.panel.status .timeleft').html(hs + ":" + ms + ":" + ss);
+      
+      // Display the properly-formatted time left
+      $('.panel.status .timeleft').html(`${hs}:${ms}:${ss}`);
+      // Decrement our time left
       return timeleft--;
     };
+    
+    // Set the interval
     interval = window.setInterval(intervalfn, 1000);
     return intervalfn();
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Initialization and event handling
   $(function() {
     ui_setStatus(STATUS_LOADING);
     return $('.panel.status').on('click', function(e) {
       switch (ui_getStatus()) {
+        //when STATUS_LOADING
         case STATUS_LINKACCT:
           return window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus();
         case STATUS_PLACETILE:
@@ -364,23 +563,36 @@
     });
   });
 
+  //###############################################################################
+  // Websocket Handling
+
+  // Pass a DataView into a MSGTYPE_HBOARD* message, and this function will
+  // render that message onto the board.
   render_paintBoard = function(wsdv) {
     var cc, cx, i, id, j, l, n, ref;
+    // Grab canvas context and image data
     cx = $('canvas')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
-    for (i = l = 0, ref = BOARD_WIDTH * BOARD_HEIGHT; 0 <= ref ? l < ref : l > ref; i = 0 <= ref ? ++l : --l) {
+// Process each color code passed to us
+    for (i = l = 0, ref = BOARD_WIDTH * BOARD_HEIGHT; (0 <= ref ? l < ref : l > ref); i = 0 <= ref ? ++l : --l) {
       cc = wsdv.getUint8(i + 1);
       for (j = n = 0; n < 4; j = ++n) {
         id.data[(i * 4) + j] = PALETTE[cc][j];
       }
     }
+    
+    // Put image data
     return cx.putImageData(id, 0, 0);
   };
 
+  // Pass a DataView into a MSG_S_UPDATE message, and this function will
+  // render the update to the board.
   render_updateBoard = function(wsdv) {
     var c, cx, i, id, l, pack, ref, x, y;
+    // Grab canvas context and image data
     cx = $('canvas')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
+// Process each color code passed to us
     for (i = l = 1, ref = wsdv.byteLength; l < ref; i = l += 4) {
       pack = wsdv.getUint32(i);
       x = Math.floor((pack >> 8) % BOARD_WIDTH);
@@ -388,49 +600,81 @@
       c = Math.floor((pack >> 0) & 0xFF);
       id.data.set(PALETTE[c], 4 * (x + (y * BOARD_WIDTH)));
     }
+    // Put image data
     return cx.putImageData(id, 0, 0);
   };
 
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Initialization and message processing
   $(function() {
     var wsurl;
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Initialization
+
+    // Build out websocket URL
     wsurl = "ws://" + document.location.host + "/ws";
     if (document.cookie) {
       wsurl += "?session=" + $.cookie('session');
     }
+    // Establish Websocket connection
     window.ws = new WebSocket(wsurl);
+    // Handle errors and closure
     window.ws.onerror = window.ws.onclose = function(e) {
       return ui_setStatus(STATUS_DCONN);
     };
-    return window.ws.onmessage = function(arg) {
-      var data;
-      data = arg.data;
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Handle messages
+    return window.ws.onmessage = function({data}) {
       return data.arrayBuffer().then(function(raw) {
         var d, msgtype;
         d = new DataView(raw);
         msgtype = d.getUint8(0);
+        // Process message
         switch (msgtype) {
+          //       #       #       #       #       #       #       #       
+          // Unauthenticated user
           case MSG_S_BOARDANON:
+            // Tell user to link account to proceed
             ui_setStatus(STATUS_LINKACCT);
             break;
+          
+            //       #       #       #       #       #       #       #       
+          // Standard authenticated user
           case MSG_S_BOARDAUTH:
+            // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('hidden');
+            // If we're not rate-limited, allow for pixel placement
             if (ui_getStatus() !== STATUS_COOLDOWN) {
               ui_setStatus(STATUS_PLACETILE);
             }
             break;
+          //       #       #       #       #       #       #       #       
+          // Admin user
           case MSG_S_BOARDADMN:
+            // Remove rate limiting
             RATELIMIT_SEC = 0;
+            // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.admin').removeClass('hidden');
             break;
+          //       #       #       #       #       #       #       #       
+          // Banned user
           case MSG_S_BOARDBANN:
             ui_setStatus(STATUS_BANNED);
             break;
+          // Board update
           case MSG_S_UPDATE:
             render_updateBoard(d);
             break;
+          
+            // Ratelimit message
           case MSG_S_COOLDOWN:
             ui_setStatus(STATUS_COOLDOWN, d.getUint32(1));
         }
+        
+        // Multiple message types tell us to paint the board
+        // Since you can't meet two cases in a single switch ...
+        // Process board drawing here.
         if (msgtype === MSG_S_BOARDADMN || msgtype === MSG_S_BOARDANON || msgtype === MSG_S_BOARDAUTH || msgtype === MSG_S_BOARDBANN) {
           return render_paintBoard(d);
         }
@@ -438,17 +682,27 @@
     };
   });
 
+  //###############################################################################
+  // Bot handling
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Event handling
   $(function() {
     return $('.panel.button.bot').on('click', function(e) {
       var fsel;
+      // Create a new file selection element
       fsel = $("<input type='file' accept='image/png'>");
+      // Simulate a click to open file select dialog
       fsel.click();
-      return fsel.on('change', function(e) {
+      // Set callback to run when user selects a file
+      return fsel.on('change', async function(e) {
         var userimg;
         if (!e.target.files.length) {
-          alert('no file');
+          alert('no file'); // TODO
         }
-        userimg = UPNG.decode(await(e.target.files[0].arrayBuffer()));
+        
+        // Decode image
+        userimg = UPNG.decode((await e.target.files[0].arrayBuffer()));
         return console.log(userimg);
       });
     });
@@ -459,5 +713,6 @@
 		<style>@font-face{font-family:"Noto Sans";font-weight:normal;src:url("/resources/fonts/NotoSans-Regular.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;src:url("/resources/fonts/NotoSans-Bold.ttf")}@font-face{font-family:"Noto Sans";font-weight:normal;font-style:italic;src:url("/resources/fonts/NotoSans-Italic.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;font-style:italic;src:url("/resources/fonts/NotoSans-BoldItalic.ttf")}@font-face{font-family:"Noto Sans Mono";src:url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.button{border-radius:1.5vh;width:6vh;height:6vh;background-repeat:no-repeat}.panel.hidden{display:none}.panel.pos-zoom{font-family:"Noto Sans Mono";font-weight:700;top:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:12em}.panel.status{font-family:"Noto Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.panel.button.donate{top:3vh;left:3vh}.panel.button.about{top:3vh;right:3vh}.panel.button.settings{top:3vh;right:12vh}.panel.button.bot{bottom:3vh;left:3vh;background-image:url("/resources/bot.svg");background-size:80%;background-position:55% 55%}input#bot_upload{position:fixed;top:-100vh;left:-100vh;width:1vh;height:1vh}.panel.button.admin{bottom:3vh;left:3vh}.panel.button.chat{bottom:3vh;right:3vh}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas{position:fixed;z-index:0;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges}.reticule{position:fixed;z-index:1;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}canvas.smooth-animation{transition:transform .5s ease-out}
 </style>
 	</head>
-	<body class="select-none"><div class="panel pos-zoom select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings hidden"></div><div class="panel button about"></div><div class="panel button bot hidden"></div><div class="panel button admin hidden"></div><div class="panel button chat hidden"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="select.svg" /></div><div class="popup about"></div></body>
+	<body class="select-none">
+<div class="panel pos-zoom select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings hidden"></div><div class="panel button about"></div><div class="panel button bot hidden"></div><div class="panel button admin hidden"></div><div class="panel button chat hidden"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="select.svg"/></div><div class="popup about"></div></body>
 </html>

@@ -4,18 +4,6 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// List manipulation
-
-func remove[T comparable](l []T, item T) []T {
-	for i, other := range l {
-		if other == item {
-			return append(l[:i], l[i+1:]...)
-		}
-	}
-	return l
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Pixel packing/unpacking
 
 // Packed pixels are the size of a uint32 and are formatted like this:

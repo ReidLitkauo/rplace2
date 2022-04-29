@@ -58,10 +58,10 @@ for fullroot, directories, filenames in os.walk(in_dir):
 	# Compile .head.pug and .body.pug
 	if should_compile(in_dir + root + '/\$.head.pug', out_dir + root + '.html'):
 		print('Compiling: ' + in_dir + root + '/\$.head.pug')
-		head = os.popen("phug render-file '" + in_dir + root + "/\$.head.pug'").read()
+		head = os.popen("pug -r '" + in_dir + root + "/\$.head.pug'").read()
 	if should_compile(in_dir + root + '/\$.body.pug', out_dir + root + '.html'):
 		print('Compiling: ' + in_dir + root + '/\$.body.pug')
-		body = os.popen("phug render-file '" + in_dir + root + "/\$.body.pug'").read()
+		body = os.popen("pug -r '" + in_dir + root + "/\$.body.pug'").read()
 
 	# Compile .sass
 	if should_compile(in_dir + root + '/\$.sass', out_dir + root + '.html'):
