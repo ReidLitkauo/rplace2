@@ -16,9 +16,11 @@ type Config struct {
 		Redirect string `fig:"redirect" validate:"required"`
 	}
 
-	Serve_from string `fig:"serve_from" default:"web"`
+	Serve_from   string `fig:"serve_from" default:"web"`
 
-	Serve_port int    `fig:"serve_port" default:80`
+	Serve_port   int    `fig:"serve_port" default:80`
+
+	Serve_origin string `fig:"serve_origin" validate:"required"`
 
 	Board struct {
 		Width  uint32 `fig:"width"  default:2000`

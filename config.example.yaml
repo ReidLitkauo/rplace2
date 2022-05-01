@@ -1,7 +1,8 @@
 # config.example.yaml
-# Go through this file and set the configuration you want,
-# then rename it to config.yaml
-# TODO reference setting same defaults in javascript
+# Go through this file and set the configuration you want, then rename it to config.yaml
+# All empty fields are REQUIRED
+# All non-empty fields are set to their defaults
+
 
 # Credentials for your Redddit app
 # These can be found by accessing this URL from a developer's account:
@@ -16,6 +17,12 @@ serve_from: "web"
 
 # The port to serve from
 serve_port: 80
+
+# The accepted value for your Origin header
+# In most cases, this should be the address your site is visible from,
+# including subdomain, http/https, and port number
+# For example: "https://place.example.com:8090" or "https://example.com"
+serve_origin: ""
 
 # Board dimensions
 board:
