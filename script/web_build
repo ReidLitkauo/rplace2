@@ -22,6 +22,12 @@ in_dir = 'src/web'
 # NO TRAILING SLASH
 out_dir = 'web'
 
+# Include directories
+# NO LEADING OR TRAILING SLASH
+inc_script_dir = 'script'
+inc_style_dir  = 'style'
+inc_struct_dir = 'struct'
+
 ################################################################################
 # Function to check if compilation should take place
 # Return true if source exists... and is newer than destination.
@@ -50,7 +56,11 @@ for fullroot, directories, filenames in os.walk(in_dir):
 	# This makes it easier to move files around later on
 	root = fullroot[len(in_dir):]
 
+	# Skip empty directories and include directories within endpoints
 	if not root: continue
+	if root.endswith('/' + inc_script_dir): continue
+	if root.endswith('/' + inc_style_dir):  continue
+	if root.endswith('/' + inc_struct_dir): continue
 
 	# Prepare html, css, and javascript variables
 	head = body = css = js = ''
@@ -72,6 +82,7 @@ for fullroot, directories, filenames in os.walk(in_dir):
 	if should_compile(in_dir + root + '/\$.coffee', out_dir + root + '.html'):
 		print('Compiling: ' + in_dir + root + '/\$.coffee')
 		js = os.popen("coffee -p './" + in_dir + root + "/\$.coffee'").read()
+		js = os.popen('coffeescript-concat "' + in_dir + root + '/\$.coffee" -I "' + in_dir + root + '/' + inc_script_dir + '" | coffee -ps').read()
 	
 	# Paste into template and write final file
 	print('Writing to ' + out_dir + root + '.html')

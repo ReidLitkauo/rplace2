@@ -390,93 +390,6 @@
   });
 
   //###############################################################################
-  // Pallete Handling
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Helper functions
-
-  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-  // Clean and hide the palette UI
-  ui_clearPalette = function() {
-    // Clean up the palette UI element and hide it
-
-    // Disable submit button
-    $('.palette form.submit button').attr('disabled', 'disabled');
-    // De-select all colors
-    $('.palette .colors .color').removeClass('selected');
-    // Clear placement reticule color
-    $('.reticule').css('background-color', "transparent");
-    // And hide the UI
-    return $('.palette').addClass('hidden');
-  };
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Initialization and event handling
-  $(function() {
-    var k, ref, ref1, rgb_bdr, rgb_bg, v;
-//   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-// Create all the color options from palette
-    for (k in PALETTE) {
-      v = PALETTE[k];
-      // Grab background color from palette
-      rgb_bg = `rgb(${v[0]},${v[1]},${v[2]})`;
-      // Same as background color, except for white
-      rgb_bdr = ((v[0] === (ref1 = v[1]) && ref1 === (ref = v[2])) && ref === 0xFF) ? "black" : rgb_bg;
-      // Append correctly-formatted element
-      $('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`));
-    }
-    
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Color event handling
-    $('.palette .colors .color').on('click', function(e) {
-      var c;
-      // Ensure only the selected color is pressed
-      $('.palette .colors .color').removeClass('selected');
-      $(e.target).addClass('selected');
-      // Change placement reticule to match selected color
-      c = PALETTE[e.target.dataset.index];
-      $('.reticule').css('background-color', `rgb( ${c[0]}, ${c[1]}, ${c[2]} )`);
-      // Enable the submit button
-      return $('.palette form.submit button')[0].removeAttribute('disabled');
-    });
-    
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Button event handling
-
-    //       #       #       #       #       #       #       #       #       #   
-    // Cancel placement
-    $('.palette form.cancel').on('submit', function(e) {
-      e.preventDefault();
-      ui_clearPalette();
-      return false;
-    });
-    //       #       #       #       #       #       #       #       #       #   
-    // Submit placement
-    return $('.palette form.submit').on('submit', function(e) {
-      var ab, c, dv, pixel;
-      e.preventDefault();
-      // Craft and send a pixel-placement message
-      ab = new ArrayBuffer(5);
-      dv = new DataView(ab);
-      // Set message header
-      dv.setUint8(0, MSG_C_PLACE);
-      // Determine color
-      c = $('.palette .colors .color.selected')[0].dataset.index;
-      // Create a packed pixel with color and position
-      pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c;
-      // Plop the packed pixel in place
-      dv.setUint32(1, pixel);
-      // ... and send
-      ws.send(dv);
-      // Show timeout status
-      ui_setStatus(STATUS_COOLDOWN);
-      // Clean the palette UI
-      ui_clearPalette();
-      return false;
-    });
-  });
-
-  //###############################################################################
   // Status Handling
 
   // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
@@ -564,6 +477,93 @@
   });
 
   //###############################################################################
+  // Pallete Handling
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Helper functions
+
+  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  // Clean and hide the palette UI
+  ui_clearPalette = function() {
+    // Clean up the palette UI element and hide it
+
+    // Disable submit button
+    $('.palette form.submit button').attr('disabled', 'disabled');
+    // De-select all colors
+    $('.palette .colors .color').removeClass('selected');
+    // Clear placement reticule color
+    $('.reticule').css('background-color', "transparent");
+    // And hide the UI
+    return $('.palette').addClass('hidden');
+  };
+
+  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // Initialization and event handling
+  $(function() {
+    var k, ref, ref1, rgb_bdr, rgb_bg, v;
+//   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+// Create all the color options from palette
+    for (k in PALETTE) {
+      v = PALETTE[k];
+      // Grab background color from palette
+      rgb_bg = `rgb(${v[0]},${v[1]},${v[2]})`;
+      // Same as background color, except for white
+      rgb_bdr = ((v[0] === (ref1 = v[1]) && ref1 === (ref = v[2])) && ref === 0xFF) ? "black" : rgb_bg;
+      // Append correctly-formatted element
+      $('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`));
+    }
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Color event handling
+    $('.palette .colors .color').on('click', function(e) {
+      var c;
+      // Ensure only the selected color is pressed
+      $('.palette .colors .color').removeClass('selected');
+      $(e.target).addClass('selected');
+      // Change placement reticule to match selected color
+      c = PALETTE[e.target.dataset.index];
+      $('.reticule').css('background-color', `rgb( ${c[0]}, ${c[1]}, ${c[2]} )`);
+      // Enable the submit button
+      return $('.palette form.submit button')[0].removeAttribute('disabled');
+    });
+    
+    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Button event handling
+
+    //       #       #       #       #       #       #       #       #       #   
+    // Cancel placement
+    $('.palette form.cancel').on('submit', function(e) {
+      e.preventDefault();
+      ui_clearPalette();
+      return false;
+    });
+    //       #       #       #       #       #       #       #       #       #   
+    // Submit placement
+    return $('.palette form.submit').on('submit', function(e) {
+      var ab, c, dv, pixel;
+      e.preventDefault();
+      // Craft and send a pixel-placement message
+      ab = new ArrayBuffer(5);
+      dv = new DataView(ab);
+      // Set message header
+      dv.setUint8(0, MSG_C_PLACE);
+      // Determine color
+      c = $('.palette .colors .color.selected')[0].dataset.index;
+      // Create a packed pixel with color and position
+      pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c;
+      // Plop the packed pixel in place
+      dv.setUint32(1, pixel);
+      // ... and send
+      ws.send(dv);
+      // Show timeout status
+      ui_setStatus(STATUS_COOLDOWN);
+      // Clean the palette UI
+      ui_clearPalette();
+      return false;
+    });
+  });
+
+  //###############################################################################
   // Websocket Handling
 
   // Pass a DataView into a MSGTYPE_HBOARD* message, and this function will
@@ -607,12 +607,13 @@
   // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   // Initialization and message processing
   $(function() {
-    var wsurl;
+    var wsprotocol, wsurl;
     //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
     // Initialization
 
     // Build out websocket URL
-    wsurl = "ws://" + document.location.host + "/ws";
+    wsprotocol = document.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    wsurl = wsprotocol + "//" + document.location.host + "/ws";
     if (document.cookie) {
       wsurl += "?session=" + $.cookie('session');
     }
