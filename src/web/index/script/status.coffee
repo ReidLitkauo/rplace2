@@ -1,17 +1,18 @@
 ################################################################################
-# Status Handling
+# Helper functions
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
+# Set status
 
-ui_setStatus = (s, timeleft = RATELIMIT_SEC) ->
+status_set = (s, timeleft = RATELIMIT_SEC) ->
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Common preprocessing
 
 	# Set dataset attribute right away
 	$('.panel.status')[0].dataset.mode = s
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Special considerations
 
 	# Do we need to widen the status bar?
@@ -26,23 +27,24 @@ ui_setStatus = (s, timeleft = RATELIMIT_SEC) ->
 			<img class='timeleft' src='/timer.svg' />
 			<div class='timeleft'></div>
 			"
-		ui_handleCooldown(timeleft)
+		status_handleCooldown timeleft
 		return
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Show status to user
 
 	$('.panel.status').text window.lang['status_' + s]['en']
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
+# Retrieve status
 
-ui_getStatus = () ->
+status_get = () ->
 	$('.panel.status')[0].dataset.mode
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # Show cooldown message to user
 
-ui_handleCooldown = (timeleft = RATELIMIT_SEC) ->
+status_handleCooldown = (timeleft = RATELIMIT_SEC) ->
 
 	intervalfn = () ->
 
@@ -50,7 +52,7 @@ ui_handleCooldown = (timeleft = RATELIMIT_SEC) ->
 		if timeleft <= 0
 			$('.panel.status .timeleft').html ''
 			window.clearTimeout interval
-			ui_setStatus STATUS_PLACETILE
+			status_set STATUS_PLACETILE
 			return
 		
 		# Determine hours/minutes/seconds left
@@ -73,16 +75,25 @@ ui_handleCooldown = (timeleft = RATELIMIT_SEC) ->
 	interval = window.setInterval intervalfn, 1000
 	intervalfn()
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Initialization and event handling
+################################################################################
+# Initialization
 
 $ ->
 
-	ui_setStatus STATUS_LOADING
+	# Set initial status
+	status_set STATUS_LOADING
 
+################################################################################
+# Event handling
+
+$ ->
+
+	#///////////////////////////////////////////////////////////////////////////
+	# Clicked on status bar: Do whatever is most appropriate
+	
 	$('.panel.status').on 'click', (e) ->
 		
-		switch ui_getStatus()
+		switch status_get()
 
 			#when STATUS_LOADING
 
@@ -91,6 +102,6 @@ $ ->
 
 			when STATUS_PLACETILE
 				g_pos.set g_pos.xf + 0.5, g_pos.yf + 0.5, null
-				render_applyPos()
+				canvas_applyPos()
 				$('.palette').removeClass('hidden')
 

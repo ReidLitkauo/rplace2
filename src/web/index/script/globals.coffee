@@ -2,7 +2,7 @@
 # Constants
 # Must be kept the same as the ones used by the server
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # Websocket message types
 
 # Server messages
@@ -21,7 +21,7 @@ MSG_S_COOLDOWN  = 0x40
 MSG_C_PLACE     = 0xA0
 #MSG_C_RECT      = 0xA1
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # Statuses
 
 STATUS_LOADING   = 'loading'
@@ -32,7 +32,7 @@ STATUS_DCONN     = 'dconn'
 STATUS_COOLDOWN  = 'cooldown'
 STATUS_BANNED    = 'banned'
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # Color palette
 
 PALETTE = [
@@ -70,10 +70,20 @@ PALETTE = [
 	[0xFF, 0xFF, 0xFF, 0xFF],
 ]
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # Miscellany
 
 BOARD_WIDTH = BOARD_HEIGHT = 2000
 
 RATELIMIT_SEC = 10
+
+################################################################################
+# Variables
+
+# In-memory representation of the board as palette indices
+g_board = new Uint8Array(BOARD_WIDTH * BOARD_HEIGHT)
+
+# Canvas positioning
+# To be handled by the position file
+g_pos = null
 

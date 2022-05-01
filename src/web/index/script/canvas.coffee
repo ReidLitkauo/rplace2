@@ -1,7 +1,4 @@
 ################################################################################
-# Canvas movement & navigation
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Global variables
 
 # Anchor X and Y coordinates, established when clicking down on the canvas
@@ -12,14 +9,17 @@ anchorY = null
 anchorMX = null
 anchorMY = null
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+################################################################################
+# Helper functions
+
+#///////////////////////////////////////////////////////////////////////////////
 # Get raw transformation values
 # txp, typ: transform along x/y as percentage
 # sf: scale factor
 # I did a LOT of experimentation to arrive at these numbers, and they seem to
 # work just fine. I don't have a mathematical proof behind these though...
 
-render_getRawTransform = (x, y, z) ->
+canvas_getRawTransform = (x, y, z) ->
 
 	txp = (100.0 / 2000.0) * x
 	typ = (100.0 / 2000.0) * y
@@ -27,10 +27,10 @@ render_getRawTransform = (x, y, z) ->
 
 	{txp: txp, typ: typ, sf: sf}
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # From a raw mouse coordinate, grab cooresponding x/y coord on the canvas
 
-render_getXYFromMouse = (mx, my) ->
+canvas_getXYFromMouse = (mx, my) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
 	bb = $('canvas')[0].getBoundingClientRect()
@@ -54,10 +54,10 @@ render_getXYFromMouse = (mx, my) ->
 	# Success
 	{ x: x, y: y, invalid: invalid }
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+#///////////////////////////////////////////////////////////////////////////////
 # From an x/y coord on the canvas, grab cooresponding raw mouse coordinate
 
-render_getMouseFromXY = (x, y) ->
+canvas_getMouseFromXY = (x, y) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
 	bb = $('canvas')[0].getBoundingClientRect()
@@ -76,17 +76,17 @@ render_getMouseFromXY = (x, y) ->
 
 	{ mx: mx, my: my }
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Transform the canvas and relevant UI elements to reflect being positioned
+#///////////////////////////////////////////////////////////////////////////////
+# Transform the canvas to reflect being positioned
 # at the given X,Y coord with the given zoom.
 
-render_applyPos = () ->
+canvas_applyPos = () ->
 
 	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
 	# Move the canvas parent to the correct spot
 
 	# Grab raw transform values
-	t = render_getRawTransform g_pos.x, g_pos.y, g_pos.zl
+	t = canvas_getRawTransform g_pos.x, g_pos.y, g_pos.zl
 
 	# Format correctly and apply to element designed to handle these transforms
 	# Other DOM elements will resize and move appropriately
@@ -104,14 +104,14 @@ render_applyPos = () ->
 	# https://stackoverflow.com/q/8840580
 	# TODO nothing worked :(
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Animate the pixel selection reticule
+#///////////////////////////////////////////////////////////////////////////////
+# Animate the pixel selection reticule and other canvas-bound UI elements
 
-render_animateReticule = () ->
+canvas_animateUI = () ->
 
 	# Retrieve coordinates for top-left and bottom-right
-	tl = render_getMouseFromXY g_pos.xf, g_pos.yf
-	br = render_getMouseFromXY 1 + g_pos.xf, 1 + g_pos.yf
+	tl = canvas_getMouseFromXY g_pos.xf, g_pos.yf
+	br = canvas_getMouseFromXY 1 + g_pos.xf, 1 + g_pos.yf
 
 	# As simple as moving the selction SVG's parent to the correct spot.
 	$('.reticule').css {
@@ -121,19 +121,31 @@ render_animateReticule = () ->
 		height: (br.mx - tl.mx) + 'px'
 	}
 
-	window.requestAnimationFrame render_animateReticule
+	# DO IT AGAIN
+	window.requestAnimationFrame canvas_animateUI
 
-# Initial call to start animation loop
-window.requestAnimationFrame render_animateReticule
+################################################################################
+# Initialization
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Handle mouse events
 $ ->
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	# Set initial position
+	canvas_applyPos()
+
+	# Begin animation loop
+	window.requestAnimationFrame canvas_animateUI
+
+################################################################################
+# Event handling
+
+$ ->
+
+	#///////////////////////////////////////////////////////////////////////////
 	# Process click-and-drag
 
-	# Establish an anchor point upon mousedown
+	#===========================================================================
+	# Mousedown: Establish anchor point
+
 	$('body').on 'mousedown', (e) ->
 
 		# Do not establish an anchor point if clicking on UI elements
@@ -154,30 +166,36 @@ $ ->
 			anchorMX = e.originalEvent.x
 			anchorMY = e.originalEvent.y
 	
-	# Re-add animation smoothing
+	#===========================================================================
+	# Mouseup: Re-apply animation smoothing
+
 	$('body').on 'mouseup', (e) ->
 		$('canvas').addClass 'smooth-animation'
 	
-	# Set coords and open palette if clicked
+	#===========================================================================
+	# Click: Open pallete and set coords
+
 	$('body').on 'click', (e) ->
 
-		# If clicked on a single spot, center the canvas there
+		# Only applies if click's mousedown coords were same as mouseup coords
 		if e.originalEvent.x == anchorMX and e.originalEvent.y == anchorMY
 
 			# Obtain pixel that was clicked
-			coords = render_getXYFromMouse anchorMX, anchorMY
+			coords = canvas_getXYFromMouse anchorMX, anchorMY
 			console.log coords
 
 			# If clicked in the canvas, center on that location
 			if !coords.invalid
 				g_pos.set Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null
-				render_applyPos()
+				canvas_applyPos()
 
 				# Also show the palette if we can
-				if ui_getStatus() == 'placetile'
+				if status_get() == 'placetile'
 					$('.palette').removeClass('hidden')
 
-	# Use that anchor point when the mouse moves
+	#===========================================================================
+	# Mousemove: Move canvas using anchor as reference
+
 	$('body').on 'mousemove', (e) ->
 	
 		# Only move if a mouse button is pressed and anchor was set
@@ -201,9 +219,9 @@ $ ->
 			g_pos.set anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null
 
 			# Actually do the moving
-			render_applyPos()
+			canvas_applyPos()
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#///////////////////////////////////////////////////////////////////////////////
 	# Process scroll wheel
 	
 	$('body').on 'wheel', (e) ->
@@ -220,11 +238,11 @@ $ ->
 		$('canvas').removeClass 'smooth-animation'
 
 		# Render the canvas zoom
-		render_applyPos()
+		canvas_applyPos()
 
 		# Re-establish anchor point if we're holding down a mouse button
 		if e.buttons
-			coord = render_getXYFromMouse e.originalEvent.x, e.originalEvent.y
+			coord = canvas_getXYFromMouse e.originalEvent.x, e.originalEvent.y
 			anchorX = g_pos.x
 			anchorY = g_pos.y
 			anchorMX = e.originalEvent.x
@@ -234,12 +252,3 @@ $ ->
 		# Re-add smoothing if we're not holding a mouse button
 		if !e.buttons then $('canvas').addClass 'smooth-animation'
 	
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Process mouse click
-
-	$('canvas').on 'mouseup', (e) ->
-		#console.log(e.originalEvent)
-
-$ ->
-	render_applyPos()
-

@@ -1,7 +1,7 @@
-#=require <constants>
-#=require <position>
+#=require <globals>
+#=require <pos>
 #=require <canvas>
 #=require <status>
 #=require <palette>
-#=require <websocket>
+#=require <ws>
 #=require <bot>

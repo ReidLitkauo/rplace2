@@ -12,11 +12,11 @@
   // Constants
   // Must be kept the same as the ones used by the server
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // Websocket message types
 
   // Server messages
-  var BOARD_HEIGHT, BOARD_WIDTH, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, RATELIMIT_SEC, STATUS_BANNED, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, render_animateReticule, render_applyPos, render_getMouseFromXY, render_getRawTransform, render_getXYFromMouse, render_paintBoard, render_updateBoard, ui_clearPalette, ui_getStatus, ui_handleCooldown, ui_setStatus;
+  var BOARD_HEIGHT, BOARD_WIDTH, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, RATELIMIT_SEC, STATUS_BANNED, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, g_board, g_pos, palette_clearUI, status_get, status_handleCooldown, status_set, ws, ws_paintBoard, ws_updateBoard;
 
   MSG_S_BOARDANON = 0x20;
 
@@ -35,7 +35,7 @@
 
   //MSG_C_RECT      = 0xA1
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // Statuses
   STATUS_LOADING = 'loading';
 
@@ -51,20 +51,30 @@
 
   STATUS_BANNED = 'banned';
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // Color palette
   PALETTE = [[0x6D, 0x00, 0x1A, 0xFF], [0xBE, 0x00, 0x39, 0xFF], [0xFF, 0x45, 0x00, 0xFF], [0xFF, 0xA8, 0x00, 0xFF], [0xFF, 0xD6, 0x35, 0xFF], [0xFF, 0xF8, 0xB8, 0xFF], [0x00, 0xA3, 0x68, 0xFF], [0x00, 0xCC, 0x78, 0xFF], [0x7E, 0xED, 0x56, 0xFF], [0x00, 0x75, 0x6F, 0xFF], [0x00, 0x9E, 0xAA, 0xFF], [0x00, 0xCC, 0xC0, 0xFF], [0x24, 0x50, 0xA4, 0xFF], [0x36, 0x90, 0xEA, 0xFF], [0x51, 0xE9, 0xF4, 0xFF], [0x49, 0x3A, 0xC1, 0xFF], [0x6A, 0x5C, 0xFF, 0xFF], [0x94, 0xB3, 0xFF, 0xFF], [0x81, 0x1E, 0x9F, 0xFF], [0xB4, 0x4A, 0xC0, 0xFF], [0xE4, 0xAB, 0xFF, 0xFF], [0xDE, 0x10, 0x7F, 0xFF], [0xFF, 0x38, 0x81, 0xFF], [0xFF, 0x99, 0xAA, 0xFF], [0x6D, 0x48, 0x2F, 0xFF], [0x9C, 0x69, 0x26, 0xFF], [0xFF, 0xB4, 0x70, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x51, 0x52, 0x52, 0xFF], [0x89, 0x8D, 0x90, 0xFF], [0xD4, 0xD7, 0xD9, 0xFF], [0xFF, 0xFF, 0xFF, 0xFF]];
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // Miscellany
   BOARD_WIDTH = BOARD_HEIGHT = 2000;
 
   RATELIMIT_SEC = 10;
 
   //###############################################################################
+  // Variables
+
+  // In-memory representation of the board as palette indices
+  g_board = new Uint8Array(BOARD_WIDTH * BOARD_HEIGHT);
+
   // Canvas positioning
-  window.g_pos = {
-    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  // To be handled by the position file
+  g_pos = null;
+
+  //###############################################################################
+  // Position declaration
+  g_pos = {
+    /////////////////////////////////////////////////////////////////////////////
     // Position variables
 
     // X/Y coords of screen center
@@ -78,7 +88,7 @@
     zl: null,
     // Valid values for zoom level
     zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10],
-    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    /////////////////////////////////////////////////////////////////////////////
     // Set position
     set: function(x, y, zi) {
       // Check for null values, which indicate to not change that coord
@@ -120,14 +130,14 @@
       this.zi = zi;
       return this.zl = this.zooms[zi];
     },
-    // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+    /////////////////////////////////////////////////////////////////////////////
     // Add position
     add: function(x, y, zi) {
       return this.set(x + this.x, y + this.y, zi + this.zi);
     }
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  //###############################################################################
   // Initialization
   $(function() {
     var x, y, zi;
@@ -149,9 +159,6 @@
   });
 
   //###############################################################################
-  // Canvas movement & navigation
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   // Global variables
 
   // Anchor X and Y coordinates, established when clicking down on the canvas
@@ -164,13 +171,16 @@
 
   anchorMY = null;
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  //###############################################################################
+  // Helper functions
+
+  /////////////////////////////////////////////////////////////////////////////////
   // Get raw transformation values
   // txp, typ: transform along x/y as percentage
   // sf: scale factor
   // I did a LOT of experimentation to arrive at these numbers, and they seem to
   // work just fine. I don't have a mathematical proof behind these though...
-  render_getRawTransform = function(x, y, z) {
+  canvas_getRawTransform = function(x, y, z) {
     var sf, txp, typ;
     txp = (100.0 / 2000.0) * x;
     typ = (100.0 / 2000.0) * y;
@@ -182,9 +192,9 @@
     };
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // From a raw mouse coordinate, grab cooresponding x/y coord on the canvas
-  render_getXYFromMouse = function(mx, my) {
+  canvas_getXYFromMouse = function(mx, my) {
     var bb, invalid, x, xc, xp, y, yc, yp;
     // Grab canvas bounding box, this will take transforms into consideration
     bb = $('canvas')[0].getBoundingClientRect();
@@ -209,9 +219,9 @@
     };
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // From an x/y coord on the canvas, grab cooresponding raw mouse coordinate
-  render_getMouseFromXY = function(x, y) {
+  canvas_getMouseFromXY = function(x, y) {
     var bb, mx, my, xc, xp, yc, yp;
     // Grab canvas bounding box, this will take transforms into consideration
     bb = $('canvas')[0].getBoundingClientRect();
@@ -230,16 +240,16 @@
     };
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Transform the canvas and relevant UI elements to reflect being positioned
+  /////////////////////////////////////////////////////////////////////////////////
+  // Transform the canvas to reflect being positioned
   // at the given X,Y coord with the given zoom.
-  render_applyPos = function() {
+  canvas_applyPos = function() {
     var t;
     //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
     // Move the canvas parent to the correct spot
 
     // Grab raw transform values
-    t = render_getRawTransform(g_pos.x, g_pos.y, g_pos.zl);
+    t = canvas_getRawTransform(g_pos.x, g_pos.y, g_pos.zl);
     // Format correctly and apply to element designed to handle these transforms
     // Other DOM elements will resize and move appropriately
     $('canvas').css('transform', `scale(${t.sf}) translate(-${t.txp}%, -${t.typ}%)`);
@@ -255,13 +265,13 @@
   // https://stackoverflow.com/q/8840580
   // TODO nothing worked :(
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Animate the pixel selection reticule
-  render_animateReticule = function() {
+  /////////////////////////////////////////////////////////////////////////////////
+  // Animate the pixel selection reticule and other canvas-bound UI elements
+  canvas_animateUI = function() {
     var br, tl;
     // Retrieve coordinates for top-left and bottom-right
-    tl = render_getMouseFromXY(g_pos.xf, g_pos.yf);
-    br = render_getMouseFromXY(1 + g_pos.xf, 1 + g_pos.yf);
+    tl = canvas_getMouseFromXY(g_pos.xf, g_pos.yf);
+    br = canvas_getMouseFromXY(1 + g_pos.xf, 1 + g_pos.yf);
     // As simple as moving the selction SVG's parent to the correct spot.
     $('.reticule').css({
       top: tl.my + 'px',
@@ -269,19 +279,27 @@
       width: (br.my - tl.my) + 'px',
       height: (br.mx - tl.mx) + 'px'
     });
-    return window.requestAnimationFrame(render_animateReticule);
+    // DO IT AGAIN
+    return window.requestAnimationFrame(canvas_animateUI);
   };
 
-  // Initial call to start animation loop
-  window.requestAnimationFrame(render_animateReticule);
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Handle mouse events
+  //###############################################################################
+  // Initialization
   $(function() {
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    // Set initial position
+    canvas_applyPos();
+    // Begin animation loop
+    return window.requestAnimationFrame(canvas_animateUI);
+  });
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
     // Process click-and-drag
 
-    // Establish an anchor point upon mousedown
+    //===========================================================================
+    // Mousedown: Establish anchor point
     $('body').on('mousedown', function(e) {
       // Do not establish an anchor point if clicking on UI elements
       if ($(e.target).is('.palette, .panel') || $(e.target).parents().is('.palette, .panel')) {
@@ -300,30 +318,33 @@
       }
     });
     
-    // Re-add animation smoothing
+    //===========================================================================
+    // Mouseup: Re-apply animation smoothing
     $('body').on('mouseup', function(e) {
       return $('canvas').addClass('smooth-animation');
     });
     
-    // Set coords and open palette if clicked
+    //===========================================================================
+    // Click: Open pallete and set coords
     $('body').on('click', function(e) {
       var coords;
-      // If clicked on a single spot, center the canvas there
+      // Only applies if click's mousedown coords were same as mouseup coords
       if (e.originalEvent.x === anchorMX && e.originalEvent.y === anchorMY) {
         // Obtain pixel that was clicked
-        coords = render_getXYFromMouse(anchorMX, anchorMY);
+        coords = canvas_getXYFromMouse(anchorMX, anchorMY);
         console.log(coords);
         if (!coords.invalid) {
           g_pos.set(Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null);
-          render_applyPos();
+          canvas_applyPos();
           // Also show the palette if we can
-          if (ui_getStatus() === 'placetile') {
+          if (status_get() === 'placetile') {
             return $('.palette').removeClass('hidden');
           }
         }
       }
     });
-    // Use that anchor point when the mouse moves
+    //===========================================================================
+    // Mousemove: Move canvas using anchor as reference
     $('body').on('mousemove', function(e) {
       var moveXpx, moveXratio, moveYpx, moveYratio, realsizeX, realsizeY;
       
@@ -345,12 +366,12 @@
         // Set position appropriately
         g_pos.set(anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null);
         // Actually do the moving
-        return render_applyPos();
+        return canvas_applyPos();
       }
     });
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    /////////////////////////////////////////////////////////////////////////////////
     // Process scroll wheel
-    $('body').on('wheel', function(e) {
+    return $('body').on('wheel', function(e) {
       var coord, zl_add;
       // Determine zoom level to add from event
       zl_add = 0;
@@ -365,10 +386,10 @@
       // Remove smoothing
       $('canvas').removeClass('smooth-animation');
       // Render the canvas zoom
-      render_applyPos();
+      canvas_applyPos();
       // Re-establish anchor point if we're holding down a mouse button
       if (e.buttons) {
-        coord = render_getXYFromMouse(e.originalEvent.x, e.originalEvent.y);
+        coord = canvas_getXYFromMouse(e.originalEvent.x, e.originalEvent.y);
         anchorX = g_pos.x;
         anchorY = g_pos.y;
         anchorMX = e.originalEvent.x;
@@ -378,28 +399,21 @@
         return $('canvas').addClass('smooth-animation');
       }
     });
-    
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Process mouse click
-    return $('canvas').on('mouseup', function(e) {});
   });
 
-  //console.log(e.originalEvent)
-  $(function() {
-    return render_applyPos();
-  });
-
+  
   //###############################################################################
-  // Status Handling
+  // Helper functions
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  ui_setStatus = function(s, timeleft = RATELIMIT_SEC) {
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  /////////////////////////////////////////////////////////////////////////////////
+  // Set status
+  status_set = function(s, timeleft = RATELIMIT_SEC) {
+    //===========================================================================
     // Common preprocessing
 
     // Set dataset attribute right away
     $('.panel.status')[0].dataset.mode = s;
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    //===========================================================================
     // Special considerations
 
     // Do we need to widen the status bar?
@@ -412,22 +426,23 @@
     // Special handling for cooldown status
     if (s === STATUS_COOLDOWN) {
       $('.panel.status').html("<img class='timeleft' src='/timer.svg' /> <div class='timeleft'></div>");
-      ui_handleCooldown(timeleft);
+      status_handleCooldown(timeleft);
       return;
     }
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    //===========================================================================
     // Show status to user
     return $('.panel.status').text(window.lang['status_' + s]['en']);
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  ui_getStatus = function() {
+  /////////////////////////////////////////////////////////////////////////////////
+  // Retrieve status
+  status_get = function() {
     return $('.panel.status')[0].dataset.mode;
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
+  /////////////////////////////////////////////////////////////////////////////////
   // Show cooldown message to user
-  ui_handleCooldown = function(timeleft = RATELIMIT_SEC) {
+  status_handleCooldown = function(timeleft = RATELIMIT_SEC) {
     var interval, intervalfn;
     intervalfn = function() {
       var h, hs, m, ms, s, ss;
@@ -435,7 +450,7 @@
       if (timeleft <= 0) {
         $('.panel.status .timeleft').html('');
         window.clearTimeout(interval);
-        ui_setStatus(STATUS_PLACETILE);
+        status_set(STATUS_PLACETILE);
         return;
       }
       
@@ -459,34 +474,37 @@
     return intervalfn();
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Initialization and event handling
+  //###############################################################################
+  // Initialization
   $(function() {
-    ui_setStatus(STATUS_LOADING);
+    // Set initial status
+    return status_set(STATUS_LOADING);
+  });
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
+    // Clicked on status bar: Do whatever is most appropriate
     return $('.panel.status').on('click', function(e) {
-      switch (ui_getStatus()) {
+      switch (status_get()) {
         //when STATUS_LOADING
         case STATUS_LINKACCT:
           return window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus();
         case STATUS_PLACETILE:
           g_pos.set(g_pos.xf + 0.5, g_pos.yf + 0.5, null);
-          render_applyPos();
+          canvas_applyPos();
           return $('.palette').removeClass('hidden');
       }
     });
   });
 
   //###############################################################################
-  // Pallete Handling
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   // Helper functions
 
-  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  /////////////////////////////////////////////////////////////////////////////////
   // Clean and hide the palette UI
-  ui_clearPalette = function() {
-    // Clean up the palette UI element and hide it
-
+  palette_clearUI = function() {
     // Disable submit button
     $('.palette form.submit button').attr('disabled', 'disabled');
     // De-select all colors
@@ -497,24 +515,31 @@
     return $('.palette').addClass('hidden');
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Initialization and event handling
+  //###############################################################################
+  // Initialization
   $(function() {
-    var k, ref, ref1, rgb_bdr, rgb_bg, v;
-//   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-// Create all the color options from palette
+    var k, ref, ref1, results, rgb_bdr, rgb_bg, v;
+/////////////////////////////////////////////////////////////////////////////
+// Create all color options from palette constant
+    results = [];
     for (k in PALETTE) {
       v = PALETTE[k];
       // Grab background color from palette
       rgb_bg = `rgb(${v[0]},${v[1]},${v[2]})`;
-      // Same as background color, except for white
+      // Same as background color, except for white, which has black border
       rgb_bdr = ((v[0] === (ref1 = v[1]) && ref1 === (ref = v[2])) && ref === 0xFF) ? "black" : rgb_bg;
       // Append correctly-formatted element
-      $('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`));
+      // The data-index is a special tool that will help us later ;3
+      results.push($('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`)));
     }
-    
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Color event handling
+    return results;
+  });
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
+    // Clicked a color: Mark it as selected
     $('.palette .colors .color').on('click', function(e) {
       var c;
       // Ensure only the selected color is pressed
@@ -527,22 +552,23 @@
       return $('.palette form.submit button')[0].removeAttribute('disabled');
     });
     
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Button event handling
-
-    //       #       #       #       #       #       #       #       #       #   
-    // Cancel placement
+    /////////////////////////////////////////////////////////////////////////////
+    // Clicked cancel button: Remove color selection and hide palette UI
     $('.palette form.cancel').on('submit', function(e) {
       e.preventDefault();
-      ui_clearPalette();
+      palette_clearUI();
       return false;
     });
-    //       #       #       #       #       #       #       #       #       #   
+    /////////////////////////////////////////////////////////////////////////////
+    // Clicked submit button: Send pixel to server and hide palette UI
     // Submit placement
     return $('.palette form.submit').on('submit', function(e) {
       var ab, c, dv, pixel;
       e.preventDefault();
+      //=======================================================================
       // Craft and send a pixel-placement message
+
+      // Message variables
       ab = new ArrayBuffer(5);
       dv = new DataView(ab);
       // Set message header
@@ -555,21 +581,33 @@
       dv.setUint32(1, pixel);
       // ... and send
       ws.send(dv);
+      //=======================================================================
+      // Update the UI
+
       // Show timeout status
-      ui_setStatus(STATUS_COOLDOWN);
+      status_set(STATUS_COOLDOWN);
       // Clean the palette UI
-      ui_clearPalette();
+      palette_clearUI();
       return false;
     });
   });
 
   //###############################################################################
-  // Websocket Handling
+  // Globals
 
+  // The websocket
+  ws = null;
+
+  //###############################################################################
+  // Helpful functions
+
+  /////////////////////////////////////////////////////////////////////////////////
   // Pass a DataView into a MSGTYPE_HBOARD* message, and this function will
   // render that message onto the board.
-  render_paintBoard = function(wsdv) {
+  ws_paintBoard = function(wsdv) {
     var cc, cx, i, id, j, l, n, ref;
+    // Overwrite our in-memory board state
+    g_board = wsdv.buffer.slice(1, wsdv.buffer.length);
     // Grab canvas context and image data
     cx = $('canvas')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
@@ -585,108 +623,132 @@
     return cx.putImageData(id, 0, 0);
   };
 
+  /////////////////////////////////////////////////////////////////////////////////
   // Pass a DataView into a MSG_S_UPDATE message, and this function will
   // render the update to the board.
-  render_updateBoard = function(wsdv) {
+  ws_updateBoard = function(wsdv) {
     var c, cx, i, id, l, pack, ref, x, y;
     // Grab canvas context and image data
     cx = $('canvas')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
 // Process each color code passed to us
     for (i = l = 1, ref = wsdv.byteLength; l < ref; i = l += 4) {
+      // Grab packed pixel
       pack = wsdv.getUint32(i);
+      // Unpack pixel
       x = Math.floor((pack >> 8) % BOARD_WIDTH);
       y = Math.floor((pack >> 8) / BOARD_WIDTH);
       c = Math.floor((pack >> 0) & 0xFF);
+      // Update in-memory board
+      g_board[x + y * BOARD_WIDTH] = c;
+      // Update canvas
       id.data.set(PALETTE[c], 4 * (x + (y * BOARD_WIDTH)));
     }
     // Put image data
     return cx.putImageData(id, 0, 0);
   };
 
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-  // Initialization and message processing
+  //###############################################################################
+  // Initialization
   $(function() {
-    var wsprotocol, wsurl;
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-    // Initialization
-
+    var wsurl;
+    /////////////////////////////////////////////////////////////////////////////
     // Build out websocket URL
-    wsprotocol = document.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    wsurl = wsprotocol + "//" + document.location.host + "/ws";
-    if (document.cookie) {
+
+    // Start with protocol, match to window
+    wsurl = document.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Add current host, no need to hardcode this in
+    // This plays nice with the server's CSRF protection
+    wsurl += "//" + document.location.host + "/ws";
+    // Append session cookie if we have one
+    if ($.cookie('session')) {
       wsurl += "?session=" + $.cookie('session');
     }
+    /////////////////////////////////////////////////////////////////////////////
     // Establish Websocket connection
-    window.ws = new WebSocket(wsurl);
+    return ws = new WebSocket(wsurl);
+  });
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
     // Handle errors and closure
-    window.ws.onerror = window.ws.onclose = function(e) {
-      return ui_setStatus(STATUS_DCONN);
+    ws.onerror = ws.onclose = function(e) {
+      return status_set(STATUS_DCONN);
     };
     
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    /////////////////////////////////////////////////////////////////////////////
     // Handle messages
-    return window.ws.onmessage = function({data}) {
+    return ws.onmessage = function({data}) {
+      //=======================================================================
+      // Initialization
+
+      // Why does this return a promise :(
       return data.arrayBuffer().then(function(raw) {
         var d, msgtype;
+        // Grab a data view of the message and find the message type
         d = new DataView(raw);
         msgtype = d.getUint8(0);
         // Process message
         switch (msgtype) {
-          //       #       #       #       #       #       #       #       
-          // Unauthenticated user
+          //---------------------------------------------------------------
+          // Board initialization: Unauthenticated user
           case MSG_S_BOARDANON:
             // Tell user to link account to proceed
-            ui_setStatus(STATUS_LINKACCT);
+            status_set(STATUS_LINKACCT);
             break;
           
-            //       #       #       #       #       #       #       #       
-          // Standard authenticated user
+            //---------------------------------------------------------------
+          // Board initialization: Standard authenticated user
           case MSG_S_BOARDAUTH:
             // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('hidden');
             // If we're not rate-limited, allow for pixel placement
-            if (ui_getStatus() !== STATUS_COOLDOWN) {
-              ui_setStatus(STATUS_PLACETILE);
+            if (status_get() !== STATUS_COOLDOWN) {
+              status_set(STATUS_PLACETILE);
             }
             break;
-          //       #       #       #       #       #       #       #       
-          // Admin user
+          //---------------------------------------------------------------
+          // Board initialization: Admin user
           case MSG_S_BOARDADMN:
             // Remove rate limiting
             RATELIMIT_SEC = 0;
             // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.admin').removeClass('hidden');
             break;
-          //       #       #       #       #       #       #       #       
-          // Banned user
+          //---------------------------------------------------------------
+          // Board initialization: Banned user
           case MSG_S_BOARDBANN:
-            ui_setStatus(STATUS_BANNED);
-            break;
-          // Board update
-          case MSG_S_UPDATE:
-            render_updateBoard(d);
+            status_set(STATUS_BANNED);
             break;
           
-            // Ratelimit message
+            //---------------------------------------------------------------
+          // Board update
+          case MSG_S_UPDATE:
+            ws_updateBoard(d);
+            break;
+          
+            //---------------------------------------------------------------
+          // Cooldown message
           case MSG_S_COOLDOWN:
-            ui_setStatus(STATUS_COOLDOWN, d.getUint32(1));
+            status_set(STATUS_COOLDOWN, d.getUint32(1));
         }
         
+        //-------------------------------------------------------------------
+        // Board initialization: Any user
+
         // Multiple message types tell us to paint the board
         // Since you can't meet two cases in a single switch ...
         // Process board drawing here.
         if (msgtype === MSG_S_BOARDADMN || msgtype === MSG_S_BOARDANON || msgtype === MSG_S_BOARDAUTH || msgtype === MSG_S_BOARDBANN) {
-          return render_paintBoard(d);
+          return ws_paintBoard(d);
         }
       });
     };
   });
 
   //###############################################################################
-  // Bot handling
-
-  // # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
   // Event handling
   $(function() {
     return $('.panel.button.bot').on('click', function(e) {

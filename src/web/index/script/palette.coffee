@@ -1,14 +1,10 @@
 ################################################################################
-# Pallete Handling
-
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
 # Helper functions
 
-#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+#///////////////////////////////////////////////////////////////////////////////
 # Clean and hide the palette UI
 
-ui_clearPalette = () ->
-	# Clean up the palette UI element and hide it
+palette_clearUI = () ->
 
 	# Disable submit button
 	$('.palette form.submit button').attr('disabled', 'disabled')
@@ -22,26 +18,33 @@ ui_clearPalette = () ->
 	# And hide the UI
 	$('.palette').addClass('hidden')
 
-# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # 
-# Initialization and event handling
+################################################################################
+# Initialization
+
 $ ->
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Create all the color options from palette
+	#///////////////////////////////////////////////////////////////////////////
+	# Create all color options from palette constant
 
 	for k, v of PALETTE
 
 		# Grab background color from palette
 		rgb_bg = "rgb(#{v[0]},#{v[1]},#{v[2]})"
 
-		# Same as background color, except for white
+		# Same as background color, except for white, which has black border
 		rgb_bdr = if v[0] == v[1] == v[2] == 0xFF then "black" else rgb_bg
 
 		# Append correctly-formatted element
+		# The data-index is a special tool that will help us later ;3
 		$('.palette .colors').append $("<div data-index='#{k}' class='color' style='background-color: #{rgb_bg}; border-color: #{rgb_bdr};'></div>")
-	
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Color event handling
+
+################################################################################
+# Event handling
+
+$ ->
+
+	#///////////////////////////////////////////////////////////////////////////
+	# Clicked a color: Mark it as selected
 
 	$('.palette .colors .color').on 'click', (e) ->
 
@@ -56,25 +59,25 @@ $ ->
 		# Enable the submit button
 		$('.palette form.submit button')[0].removeAttribute('disabled')
 	
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
-	# Button event handling
-
-	#       #       #       #       #       #       #       #       #       #   
-	# Cancel placement
+	#///////////////////////////////////////////////////////////////////////////
+	# Clicked cancel button: Remove color selection and hide palette UI
 
 	$('.palette form.cancel').on 'submit', (e) ->
 		e.preventDefault()
-		ui_clearPalette()
+		palette_clearUI()
 		false
 
-	#       #       #       #       #       #       #       #       #       #   
+	#///////////////////////////////////////////////////////////////////////////
+	# Clicked submit button: Send pixel to server and hide palette UI
 	# Submit placement
 
 	$('.palette form.submit').on 'submit', (e) ->
 		e.preventDefault()
 
+		#=======================================================================
 		# Craft and send a pixel-placement message
 
+		# Message variables
 		ab = new ArrayBuffer(5)
 		dv = new DataView(ab)
 
@@ -93,11 +96,14 @@ $ ->
 		# ... and send
 		ws.send(dv)
 
+		#=======================================================================
+		# Update the UI
+
 		# Show timeout status
-		ui_setStatus STATUS_COOLDOWN
+		status_set STATUS_COOLDOWN
 
 		# Clean the palette UI
-		ui_clearPalette()
+		palette_clearUI()
 
 		false
 
