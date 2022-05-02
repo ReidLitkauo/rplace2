@@ -130,8 +130,8 @@ body
 //==============================================================================
 
 .panel.button.settings
-	top: 3vh
-	right: 12vh
+	top: 12vh
+	right: 3vh
 
 //==============================================================================
 
@@ -142,17 +142,15 @@ body
 	background-size: 80%
 	background-position: 55% 55%
 
-input#bot_upload
-	position: fixed
-	top: -100vh
-	left: -100vh
-	width: 1vh
-	height: 1vh
+.panel.button.bot.cancel
+	background-image: url('/resources/cancel.svg')
+	background-size: 80%
+	background-position: 50% 50%
 
 //==============================================================================
 
 .panel.button.admin
-	bottom: 3vh
+	bottom: 12vh
 	left: 3vh
 
 //==============================================================================
@@ -223,11 +221,11 @@ input#bot_upload
 				width: 12vw
 			
 		form.cancel button
-			background-image: url("/cancel.svg")
+			background-image: url("/resources/cancel.svg")
 			background-size: 2.5vh
 			margin-right: 3vw
 		form.submit button
-			background-image: url("/submit.svg")
+			background-image: url("/resources/submit.svg")
 			background-size: 3.5vh
 		
 		form.submit button:not([disabled])
@@ -237,10 +235,10 @@ input#bot_upload
 .palette.hidden
 	bottom: -20vh
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Canvas styles
 
-canvas
+canvas.place
 	position: fixed
 	z-index: 0
 
@@ -261,6 +259,11 @@ canvas
 	image-rendering: pixelated
 	image-rendering: crisp-edges
 
+canvas.place.smooth-animation
+	transition: transform 0.5s ease-out
+
+////////////////////////////////////////////////////////////////////////////////
+
 .reticule
 	position: fixed
 	z-index: 1
@@ -274,5 +277,22 @@ canvas
 		right: 0
 		transform: scale( calc(24/20) * 100% )
 
-canvas.smooth-animation
-	transition: transform 0.5s ease-out
+.reticule.hidden
+	display: none
+
+////////////////////////////////////////////////////////////////////////////////
+
+canvas.bot
+	position: fixed
+	z-index: 1
+	pointer-events: none
+
+	// Disable anti-aliasing
+	image-rendering: pixelated
+	image-rendering: crisp-edges
+
+	outline: 3px solid #333
+	border:  3px solid #CCC
+
+canvas.bot.hidden
+	display: none

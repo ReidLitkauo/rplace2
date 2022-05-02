@@ -24,10 +24,11 @@ serve_port: 80
 # For example: "https://place.example.com:8090" or "https://example.com"
 serve_origin: ""
 
-# Board dimensions
+# Board dimensions and palette size
 board:
   width:  2000
   height: 2000
+  colors:   32
 
 # How frequently each application loop's tick will be run. For example:
 # 1000 means run once every 1000ms or 1 second

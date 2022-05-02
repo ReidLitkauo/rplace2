@@ -44,21 +44,29 @@ status_get = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Show cooldown message to user
 
-status_handleCooldown = (timeleft = RATELIMIT_SEC) ->
+status_handleCooldown = (cooldown = RATELIMIT_SEC) ->
+
+	g_cooldown = cooldown
 
 	intervalfn = () ->
 
+		# No point in continuing if status has changed since last update
+		if status_get() isnt STATUS_COOLDOWN
+			clearTimeout interval
+			return
+
 		# Clear the interval if we don't need it anymore
-		if timeleft <= 0
+		if g_cooldown <= 0
+			g_cooldown = null
 			$('.panel.status .timeleft').html ''
-			window.clearTimeout interval
+			clearTimeout interval
 			status_set STATUS_PLACETILE
 			return
 		
 		# Determine hours/minutes/seconds left
-		h = Math.floor(timeleft / 3600)
-		m = Math.floor((timeleft % 3600) / 60)
-		s = Math.floor(timeleft % 60)
+		h = Math.floor(g_cooldown / 3600)
+		m = Math.floor((g_cooldown % 3600) / 60)
+		s = Math.floor(g_cooldown % 60)
 
 		# Add padding zeroes if needed
 		hs = (if h < 10 then "0" else "") + h
@@ -69,10 +77,10 @@ status_handleCooldown = (timeleft = RATELIMIT_SEC) ->
 		$('.panel.status .timeleft').html "#{hs}:#{ms}:#{ss}"
 
 		# Decrement our time left
-		timeleft--
+		g_cooldown--
 	
 	# Set the interval
-	interval = window.setInterval intervalfn, 1000
+	interval = setInterval intervalfn, 1000
 	intervalfn()
 
 ################################################################################
@@ -90,18 +98,41 @@ $ ->
 
 	#///////////////////////////////////////////////////////////////////////////
 	# Clicked on status bar: Do whatever is most appropriate
-	
+
 	$('.panel.status').on 'click', (e) ->
 		
 		switch status_get()
 
 			#when STATUS_LOADING
 
+			#===================================================================
+			# Link account: Start reddit account linkage webflow
+
 			when STATUS_LINKACCT
 				window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus()
 
+			#===================================================================
+			# Place tile: Show the palette
+
 			when STATUS_PLACETILE
 				g_pos.set g_pos.xf + 0.5, g_pos.yf + 0.5, null
-				canvas_applyPos()
 				$('.palette').removeClass('hidden')
+
+			#===================================================================
+			# Bot positioning: Place the image
+
+			when STATUS_BOTPOS
+
+				# Start the bot normally if we're a normal user
+				if g_role is AUTH then bot_start()
+
+				# Admins get access to insta-place
+				if g_role is ADMN then bot_place()
+
+
+			#===================================================================
+			# Bot running: Stop the bot
+
+			when STATUS_BOTRUN
+				bot_cancel()
 

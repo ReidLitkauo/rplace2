@@ -16,7 +16,7 @@
   // Websocket message types
 
   // Server messages
-  var BOARD_HEIGHT, BOARD_WIDTH, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, RATELIMIT_SEC, STATUS_BANNED, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, g_board, g_pos, palette_clearUI, status_get, status_handleCooldown, status_set, ws, ws_paintBoard, ws_updateBoard;
+  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, g_board, g_cooldown, g_pos, g_role, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
 
   MSG_S_BOARDANON = 0x20;
 
@@ -33,7 +33,17 @@
   // Client messages
   MSG_C_PLACE = 0xA0;
 
-  //MSG_C_RECT      = 0xA1
+  MSG_C_IMAGE = 0xA1;
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // User roles
+  ANON = 0x80;
+
+  AUTH = 0x81;
+
+  BANN = 0x82;
+
+  ADMN = 0x83;
 
   /////////////////////////////////////////////////////////////////////////////////
   // Statuses
@@ -51,9 +61,21 @@
 
   STATUS_BANNED = 'banned';
 
+  STATUS_BOTPOS = 'botpos';
+
+  STATUS_BOTRUN = 'botrun';
+
   /////////////////////////////////////////////////////////////////////////////////
   // Color palette
   PALETTE = [[0x6D, 0x00, 0x1A, 0xFF], [0xBE, 0x00, 0x39, 0xFF], [0xFF, 0x45, 0x00, 0xFF], [0xFF, 0xA8, 0x00, 0xFF], [0xFF, 0xD6, 0x35, 0xFF], [0xFF, 0xF8, 0xB8, 0xFF], [0x00, 0xA3, 0x68, 0xFF], [0x00, 0xCC, 0x78, 0xFF], [0x7E, 0xED, 0x56, 0xFF], [0x00, 0x75, 0x6F, 0xFF], [0x00, 0x9E, 0xAA, 0xFF], [0x00, 0xCC, 0xC0, 0xFF], [0x24, 0x50, 0xA4, 0xFF], [0x36, 0x90, 0xEA, 0xFF], [0x51, 0xE9, 0xF4, 0xFF], [0x49, 0x3A, 0xC1, 0xFF], [0x6A, 0x5C, 0xFF, 0xFF], [0x94, 0xB3, 0xFF, 0xFF], [0x81, 0x1E, 0x9F, 0xFF], [0xB4, 0x4A, 0xC0, 0xFF], [0xE4, 0xAB, 0xFF, 0xFF], [0xDE, 0x10, 0x7F, 0xFF], [0xFF, 0x38, 0x81, 0xFF], [0xFF, 0x99, 0xAA, 0xFF], [0x6D, 0x48, 0x2F, 0xFF], [0x9C, 0x69, 0x26, 0xFF], [0xFF, 0xB4, 0x70, 0xFF], [0x00, 0x00, 0x00, 0xFF], [0x51, 0x52, 0x52, 0xFF], [0x89, 0x8D, 0x90, 0xFF], [0xD4, 0xD7, 0xD9, 0xFF], [0xFF, 0xFF, 0xFF, 0xFF]];
+
+  // Palette as uint32's
+  // Generate from PALETTE
+  PALETTE_INTS = new Uint32Array(PALETTE.length);
+
+  for (i = l = 0, ref = PALETTE.length; (0 <= ref ? l < ref : l > ref); i = 0 <= ref ? ++l : --l) {
+    PALETTE_INTS[i] = PALETTE[i][0] << 24 | PALETTE[i][1] << 16 | PALETTE[i][2] << 8 | PALETTE[i][3] << 0;
+  }
 
   /////////////////////////////////////////////////////////////////////////////////
   // Miscellany
@@ -65,11 +87,17 @@
   // Variables
 
   // In-memory representation of the board as palette indices
-  g_board = new Uint8Array(BOARD_WIDTH * BOARD_HEIGHT);
+  g_board = new Uint8ClampedArray(BOARD_WIDTH * BOARD_HEIGHT);
 
   // Canvas positioning
   // To be handled by the position file
   g_pos = null;
+
+  // User role
+  g_role = ANON;
+
+  // Cooldown left in seconds
+  g_cooldown = null;
 
   //###############################################################################
   // Position declaration
@@ -83,13 +111,19 @@
     // Floored versions of coords
     xf: null,
     yf: null,
+    // Coordinate constraints
+    // min <= x/y < max
+    xmin: 0,
+    ymin: 0,
+    xmax: BOARD_WIDTH,
+    ymax: BOARD_HEIGHT,
     // Zoom index and zoom level
     zi: null,
     zl: null,
     // Valid values for zoom level
     zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10],
     /////////////////////////////////////////////////////////////////////////////
-    // Set position
+    // Position manipulation
     set: function(x, y, zi) {
       // Check for null values, which indicate to not change that coord
       if (x == null) {
@@ -102,17 +136,17 @@
         zi = this.zi;
       }
       // Range checks and other validation
-      if (x < 0) {
-        x = 0;
+      if (x < this.xmin) {
+        x = this.xmin;
       }
-      if (y < 0) {
-        y = 0;
+      if (y < this.ymin) {
+        y = this.ymin;
       }
-      if (x >= BOARD_WIDTH) {
-        x = BOARD_WIDTH * (1 - Number.EPSILON);
+      if (x >= this.xmax) {
+        x = this.xmax * (1 - Number.EPSILON);
       }
-      if (y >= BOARD_HEIGHT) {
-        y = BOARD_HEIGHT * (1 - Number.EPSILON);
+      if (y >= this.ymax) {
+        y = this.ymax * (1 - Number.EPSILON);
       }
       zi = Math.floor(zi);
       if (zi < 0) {
@@ -128,32 +162,40 @@
       this.xf = Math.floor(x);
       this.yf = Math.floor(y);
       this.zi = zi;
-      return this.zl = this.zooms[zi];
+      this.zl = this.zooms[zi];
+      // Update view with new coords
+      canvas_applyPos();
+      return this;
     },
-    /////////////////////////////////////////////////////////////////////////////
-    // Add position
     add: function(x, y, zi) {
       return this.set(x + this.x, y + this.y, zi + this.zi);
+    },
+    /////////////////////////////////////////////////////////////////////////////
+    // Position constraints
+    setMin: function(x = 0, y = 0) {
+      // Perform min adjustment
+      this.xmin = x;
+      this.ymin = y;
+      // Reposition if necessary
+      return this.set(this.x, this.y, this.zi);
+    },
+    setMax: function(x = BOARD_WIDTH, y = BOARD_HEIGHT) {
+      // Perform max adjustment
+      this.xmax = x;
+      this.ymax = y;
+      // Reposition if necessary
+      return this.set(this.x, this.y, this.zi);
     }
   };
 
   //###############################################################################
   // Initialization
   $(function() {
-    var x, y, zi;
+    var ref1, ref2, ref3, x, y, zi;
     // Grab position data from cookie, set to defaults if needed
-    x = $.cookie('posx');
-    if (x == null) {
-      x = 1000.5;
-    }
-    y = $.cookie('posy');
-    if (y == null) {
-      y = 1000.5;
-    }
-    zi = $.cookie('poszi');
-    if (zi == null) {
-      zi = 6;
-    }
+    x = (ref1 = $.cookie('posx')) != null ? ref1 : 1000.5;
+    y = (ref2 = $.cookie('posy')) != null ? ref2 : 1000.5;
+    zi = (ref3 = $.cookie('poszi')) != null ? ref3 : 6;
     // Initialize position
     return g_pos.set(x, y, zi);
   });
@@ -197,7 +239,7 @@
   canvas_getXYFromMouse = function(mx, my) {
     var bb, invalid, x, xc, xp, y, yc, yp;
     // Grab canvas bounding box, this will take transforms into consideration
-    bb = $('canvas')[0].getBoundingClientRect();
+    bb = $('canvas.place')[0].getBoundingClientRect();
     // Re-orient mouse coordinates to use top-left of canvas as origin
     xc = mx - bb.x;
     yc = my - bb.y;
@@ -224,7 +266,7 @@
   canvas_getMouseFromXY = function(x, y) {
     var bb, mx, my, xc, xp, yc, yp;
     // Grab canvas bounding box, this will take transforms into consideration
-    bb = $('canvas')[0].getBoundingClientRect();
+    bb = $('canvas.place')[0].getBoundingClientRect();
     // Get coords as percentage of canvas TODO
     xp = x / BOARD_WIDTH;
     yp = y / BOARD_HEIGHT;
@@ -235,6 +277,7 @@
     mx = xc + bb.x;
     my = yc + bb.y;
     return {
+      // Return
       mx: mx,
       my: my
     };
@@ -245,20 +288,20 @@
   // at the given X,Y coord with the given zoom.
   canvas_applyPos = function() {
     var t;
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    //===========================================================================
     // Move the canvas parent to the correct spot
 
     // Grab raw transform values
     t = canvas_getRawTransform(g_pos.x, g_pos.y, g_pos.zl);
     // Format correctly and apply to element designed to handle these transforms
     // Other DOM elements will resize and move appropriately
-    $('canvas').css('transform', `scale(${t.sf}) translate(-${t.txp}%, -${t.typ}%)`);
-    //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+    $('canvas.place').css('transform', `scale(${t.sf}) translate(-${t.txp}%, -${t.typ}%)`);
+    //===========================================================================
     // Update the XYZ UI element at the top
     return $('.panel.pos-zoom').text(`(${g_pos.xf},${g_pos.yf}) ${g_pos.zl}x`);
   };
 
-  //   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+  //===========================================================================
   // Miscellany
 
   // Prevent artifacting/smearing
@@ -269,6 +312,9 @@
   // Animate the pixel selection reticule and other canvas-bound UI elements
   canvas_animateUI = function() {
     var br, tl;
+    //===========================================================================
+    // Pixel selection reticule
+
     // Retrieve coordinates for top-left and bottom-right
     tl = canvas_getMouseFromXY(g_pos.xf, g_pos.yf);
     br = canvas_getMouseFromXY(1 + g_pos.xf, 1 + g_pos.yf);
@@ -276,9 +322,12 @@
     $('.reticule').css({
       top: tl.my + 'px',
       left: tl.mx + 'px',
-      width: (br.my - tl.my) + 'px',
-      height: (br.mx - tl.mx) + 'px'
+      width: (br.mx - tl.mx) + 'px',
+      height: (br.my - tl.my) + 'px'
     });
+    //===========================================================================
+    // Cleanup
+
     // DO IT AGAIN
     return window.requestAnimationFrame(canvas_animateUI);
   };
@@ -309,7 +358,7 @@
         return anchorMY = null;
       } else {
         // Remove transition smoothing, we want to be responsive
-        $('canvas').removeClass('smooth-animation');
+        $('canvas.place').removeClass('smooth-animation');
         // Establishing an anchor point
         anchorX = g_pos.x;
         anchorY = g_pos.y;
@@ -321,7 +370,7 @@
     //===========================================================================
     // Mouseup: Re-apply animation smoothing
     $('body').on('mouseup', function(e) {
-      return $('canvas').addClass('smooth-animation');
+      return $('canvas.place').addClass('smooth-animation');
     });
     
     //===========================================================================
@@ -335,7 +384,6 @@
         console.log(coords);
         if (!coords.invalid) {
           g_pos.set(Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null);
-          canvas_applyPos();
           // Also show the palette if we can
           if (status_get() === 'placetile') {
             return $('.palette').removeClass('hidden');
@@ -355,8 +403,8 @@
         moveYpx = e.originalEvent.y - anchorMY;
         
         // Get the size of the element in pixels
-        realsizeX = $('canvas').width();
-        realsizeY = $('canvas').height();
+        realsizeX = $('canvas.place').width();
+        realsizeY = $('canvas.place').height();
         
         // Convert these coordinates in client space into a percentage of
         // the element. What percent of the element have we traversed since
@@ -364,9 +412,7 @@
         moveXratio = moveXpx / (realsizeX * 10.0 * g_pos.zl);
         moveYratio = moveYpx / (realsizeY * 10.0 * g_pos.zl);
         // Set position appropriately
-        g_pos.set(anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null);
-        // Actually do the moving
-        return canvas_applyPos();
+        return g_pos.set(anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null);
       }
     });
     /////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +430,7 @@
       // Apply zoom to position
       g_pos.add(0, 0, zl_add);
       // Remove smoothing
-      $('canvas').removeClass('smooth-animation');
+      $('canvas.place').removeClass('smooth-animation');
       // Render the canvas zoom
       canvas_applyPos();
       // Re-establish anchor point if we're holding down a mouse button
@@ -396,7 +442,7 @@
         anchorMY = e.originalEvent.y;
       }
       if (!e.buttons) {
-        return $('canvas').addClass('smooth-animation');
+        return $('canvas.place').addClass('smooth-animation');
       }
     });
   });
@@ -442,22 +488,29 @@
 
   /////////////////////////////////////////////////////////////////////////////////
   // Show cooldown message to user
-  status_handleCooldown = function(timeleft = RATELIMIT_SEC) {
+  status_handleCooldown = function(cooldown = RATELIMIT_SEC) {
     var interval, intervalfn;
+    g_cooldown = cooldown;
     intervalfn = function() {
       var h, hs, m, ms, s, ss;
+      // No point in continuing if status has changed since last update
+      if (status_get() !== STATUS_COOLDOWN) {
+        clearTimeout(interval);
+        return;
+      }
       // Clear the interval if we don't need it anymore
-      if (timeleft <= 0) {
+      if (g_cooldown <= 0) {
+        g_cooldown = null;
         $('.panel.status .timeleft').html('');
-        window.clearTimeout(interval);
+        clearTimeout(interval);
         status_set(STATUS_PLACETILE);
         return;
       }
       
       // Determine hours/minutes/seconds left
-      h = Math.floor(timeleft / 3600);
-      m = Math.floor((timeleft % 3600) / 60);
-      s = Math.floor(timeleft % 60);
+      h = Math.floor(g_cooldown / 3600);
+      m = Math.floor((g_cooldown % 3600) / 60);
+      s = Math.floor(g_cooldown % 60);
       // Add padding zeroes if needed
       hs = (h < 10 ? "0" : "") + h;
       ms = (m < 10 ? "0" : "") + m;
@@ -466,11 +519,11 @@
       // Display the properly-formatted time left
       $('.panel.status .timeleft').html(`${hs}:${ms}:${ss}`);
       // Decrement our time left
-      return timeleft--;
+      return g_cooldown--;
     };
     
     // Set the interval
-    interval = window.setInterval(intervalfn, 1000);
+    interval = setInterval(intervalfn, 1000);
     return intervalfn();
   };
 
@@ -489,12 +542,32 @@
     return $('.panel.status').on('click', function(e) {
       switch (status_get()) {
         //when STATUS_LOADING
+
+          //===================================================================
+        // Link account: Start reddit account linkage webflow
         case STATUS_LINKACCT:
           return window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus();
+        //===================================================================
+        // Place tile: Show the palette
         case STATUS_PLACETILE:
           g_pos.set(g_pos.xf + 0.5, g_pos.yf + 0.5, null);
-          canvas_applyPos();
           return $('.palette').removeClass('hidden');
+        //===================================================================
+        // Bot positioning: Place the image
+        case STATUS_BOTPOS:
+          // Start the bot normally if we're a normal user
+          if (g_role === AUTH) {
+            bot_start();
+          }
+          // Admins get access to insta-place
+          if (g_role === ADMN) {
+            return bot_place();
+          }
+          break;
+        //===================================================================
+        // Bot running: Stop the bot
+        case STATUS_BOTRUN:
+          return bot_cancel();
       }
     });
   });
@@ -518,7 +591,7 @@
   //###############################################################################
   // Initialization
   $(function() {
-    var k, ref, ref1, results, rgb_bdr, rgb_bg, v;
+    var k, ref1, ref2, results, rgb_bdr, rgb_bg, v;
 /////////////////////////////////////////////////////////////////////////////
 // Create all color options from palette constant
     results = [];
@@ -527,7 +600,7 @@
       // Grab background color from palette
       rgb_bg = `rgb(${v[0]},${v[1]},${v[2]})`;
       // Same as background color, except for white, which has black border
-      rgb_bdr = ((v[0] === (ref1 = v[1]) && ref1 === (ref = v[2])) && ref === 0xFF) ? "black" : rgb_bg;
+      rgb_bdr = ((v[0] === (ref2 = v[1]) && ref2 === (ref1 = v[2])) && ref1 === 0xFF) ? "black" : rgb_bg;
       // Append correctly-formatted element
       // The data-index is a special tool that will help us later ;3
       results.push($('.palette .colors').append($(`<div data-index='${k}' class='color' style='background-color: ${rgb_bg}; border-color: ${rgb_bdr};'></div>`)));
@@ -563,29 +636,20 @@
     // Clicked submit button: Send pixel to server and hide palette UI
     // Submit placement
     return $('.palette form.submit').on('submit', function(e) {
-      var ab, c, dv, pixel;
       e.preventDefault();
       //=======================================================================
-      // Craft and send a pixel-placement message
-
-      // Message variables
-      ab = new ArrayBuffer(5);
-      dv = new DataView(ab);
-      // Set message header
-      dv.setUint8(0, MSG_C_PLACE);
-      // Determine color
-      c = $('.palette .colors .color.selected')[0].dataset.index;
-      // Create a packed pixel with color and position
-      pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c;
-      // Plop the packed pixel in place
-      dv.setUint32(1, pixel);
-      // ... and send
-      ws.send(dv);
+      // Send a pixel-placement message
+      ws_send_putPixel(g_pos.xf, g_pos.yf, $('.palette .colors .color.selected')[0].dataset.index);
       //=======================================================================
       // Update the UI
 
-      // Show timeout status
-      status_set(STATUS_COOLDOWN);
+      // Show appropriate follow-up status
+      if (g_role === ADMN) {
+        status_set(STATUS_PLACETILE);
+      }
+      if (g_role === AUTH) {
+        status_set(STATUS_COOLDOWN);
+      }
       // Clean the palette UI
       palette_clearUI();
       return false;
@@ -596,7 +660,7 @@
   // Globals
 
   // The websocket
-  ws = null;
+  l_ws = null;
 
   //###############################################################################
   // Helpful functions
@@ -605,16 +669,16 @@
   // Pass a DataView into a MSGTYPE_HBOARD* message, and this function will
   // render that message onto the board.
   ws_paintBoard = function(wsdv) {
-    var cc, cx, i, id, j, l, n, ref;
+    var cc, cx, id, j, n, o, ref1;
     // Overwrite our in-memory board state
-    g_board = wsdv.buffer.slice(1, wsdv.buffer.length);
+    g_board = new Uint8ClampedArray(wsdv.buffer.slice(1, wsdv.buffer.length));
     // Grab canvas context and image data
-    cx = $('canvas')[0].getContext('2d');
+    cx = $('canvas.place')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
 // Process each color code passed to us
-    for (i = l = 0, ref = BOARD_WIDTH * BOARD_HEIGHT; (0 <= ref ? l < ref : l > ref); i = 0 <= ref ? ++l : --l) {
+    for (i = n = 0, ref1 = BOARD_WIDTH * BOARD_HEIGHT; (0 <= ref1 ? n < ref1 : n > ref1); i = 0 <= ref1 ? ++n : --n) {
       cc = wsdv.getUint8(i + 1);
-      for (j = n = 0; n < 4; j = ++n) {
+      for (j = o = 0; o < 4; j = ++o) {
         id.data[(i * 4) + j] = PALETTE[cc][j];
       }
     }
@@ -627,12 +691,12 @@
   // Pass a DataView into a MSG_S_UPDATE message, and this function will
   // render the update to the board.
   ws_updateBoard = function(wsdv) {
-    var c, cx, i, id, l, pack, ref, x, y;
+    var c, cx, id, n, pack, ref1, x, y;
     // Grab canvas context and image data
-    cx = $('canvas')[0].getContext('2d');
+    cx = $('canvas.place')[0].getContext('2d');
     id = cx.getImageData(0, 0, BOARD_WIDTH, BOARD_HEIGHT);
 // Process each color code passed to us
-    for (i = l = 1, ref = wsdv.byteLength; l < ref; i = l += 4) {
+    for (i = n = 1, ref1 = wsdv.byteLength; n < ref1; i = n += 4) {
       // Grab packed pixel
       pack = wsdv.getUint32(i);
       // Unpack pixel
@@ -646,6 +710,66 @@
     }
     // Put image data
     return cx.putImageData(id, 0, 0);
+  };
+
+  //###############################################################################
+  // Message sending functions
+
+  //===============================================================================
+  // Send a "place pixel" message
+  ws_send_putPixel = function(x, y, c) {
+    var ab, dv, pixel;
+    //-----------------------------------------------------------------------
+    // Initialization
+
+    // Message variables
+    ab = new ArrayBuffer(5);
+    dv = new DataView(ab);
+    //-----------------------------------------------------------------------
+    // Header
+
+    // Message type
+    dv.setUint8(0, MSG_C_PLACE);
+    //-----------------------------------------------------------------------
+    // Payload
+
+    // Create a packed pixel with color and position
+    pixel = ((x + (y * BOARD_WIDTH)) << 8) | c;
+    // Plop the packed pixel in place
+    dv.setUint32(1, pixel);
+    //-----------------------------------------------------------------------
+    // Send
+    return l_ws.send(dv);
+  };
+
+  //===============================================================================
+  // Send a "place image" message
+  // ADMN use only, server rejects these messages if sent by other roles
+  ws_send_putImage = function(x, y, w, h, ccs) {
+    var ab, dv, ua;
+    //-----------------------------------------------------------------------
+    // Initialization
+
+    // Message variables
+    ab = new ArrayBuffer(9 + (w * h));
+    dv = new DataView(ab);
+    ua = new Uint8Array(ab);
+    //-----------------------------------------------------------------------
+    // Header
+
+    // Message type
+    dv.setUint8(0, MSG_C_IMAGE);
+    // Set x/y/w/h
+    dv.setUint16(1, x);
+    dv.setUint16(3, y);
+    dv.setUint16(5, w);
+    dv.setUint16(7, h);
+    //-----------------------------------------------------------------------
+    // Payload
+    ua.set(ccs, 9);
+    //-----------------------------------------------------------------------
+    // Send
+    return l_ws.send(dv);
   };
 
   //###############################################################################
@@ -666,7 +790,7 @@
     }
     /////////////////////////////////////////////////////////////////////////////
     // Establish Websocket connection
-    return ws = new WebSocket(wsurl);
+    return l_ws = new WebSocket(wsurl);
   });
 
   //###############################################################################
@@ -674,13 +798,13 @@
   $(function() {
     /////////////////////////////////////////////////////////////////////////////
     // Handle errors and closure
-    ws.onerror = ws.onclose = function(e) {
+    l_ws.onerror = l_ws.onclose = function(e) {
       return status_set(STATUS_DCONN);
     };
     
     /////////////////////////////////////////////////////////////////////////////
     // Handle messages
-    return ws.onmessage = function({data}) {
+    return l_ws.onmessage = function({data}) {
       //=======================================================================
       // Initialization
 
@@ -702,6 +826,8 @@
             //---------------------------------------------------------------
           // Board initialization: Standard authenticated user
           case MSG_S_BOARDAUTH:
+            // Set role
+            g_role = AUTH;
             // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('hidden');
             // If we're not rate-limited, allow for pixel placement
@@ -712,14 +838,21 @@
           //---------------------------------------------------------------
           // Board initialization: Admin user
           case MSG_S_BOARDADMN:
+            // Set role
+            g_role = ADMN;
             // Remove rate limiting
             RATELIMIT_SEC = 0;
             // Show appropriate buttons
-            $('.panel.button.chat, .panel.button.settings, .panel.button.admin').removeClass('hidden');
+            $('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass('hidden');
+            // Set status
+            status_set(STATUS_PLACETILE);
             break;
           //---------------------------------------------------------------
           // Board initialization: Banned user
           case MSG_S_BOARDBANN:
+            // Set role
+            g_role = BANN;
+            // Tell the user they suk
             status_set(STATUS_BANNED);
             break;
           
@@ -749,33 +882,258 @@
   });
 
   //###############################################################################
+  // Globals
+
+  // Raw image color code data
+  l_imgcc = null;
+
+  // Image position
+  l_x = l_y = 0;
+
+  // Image width and height
+  l_w = l_h = 0;
+
+  // Bot timeout
+  l_timeout = null;
+
+  // TODO add transparency skip
+  // TODO restore full pos movement when bot start
+  // TODO fix status upon bot start
+
+  //###############################################################################
+  // Helper functions
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Start the bot's main loop
+  bot_start = function() {
+    // Empty bot canvas, but keep the border
+    $('canvas.bot')[0].getContext('2d').clearRect(0, 0, l_w, l_h);
+    // Show pixel selection reticule
+    $('.reticule').removeClass('hidden');
+    // Set position
+    l_x = g_pos.xf - Math.floor(l_w / 2);
+    l_y = g_pos.yf - Math.floor(l_h / 2);
+    // Begin main bot loop
+    l_timeout = window.setTimeout(bot_loop, g_cooldown != null ? 1000 * g_cooldown : 0);
+    // Set cooldown to max
+    g_cooldown = RATELIMIT_SEC;
+    // Set appropriate status
+    return status_set(STATUS_BOTRUN);
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Bot main loop
+  bot_loop = function() {
+    var bi, ci, n, o, ref1, ref2, x, y;
+// Iterate through image, row by row then pixel by pixel
+    for (y = n = 0, ref1 = l_h; (0 <= ref1 ? n < ref1 : n > ref1); y = 0 <= ref1 ? ++n : --n) {
+      for (x = o = 0, ref2 = l_w; (0 <= ref2 ? o < ref2 : o > ref2); x = 0 <= ref2 ? ++o : --o) {
+        // Grab index of pixel in bot space and canvas space
+        bi = x + (y * l_w);
+        ci = (x + l_x) + ((y + l_y) * BOARD_WIDTH);
+        // Skip transparent pixels
+        if (l_imgcc[bi] === 255) {
+          continue;
+        }
+        // Compare image color code to board color code
+        // If not equal, send pixel message making it equal,
+        // set next iteration, then return
+        if (g_board[ci] !== l_imgcc[bi]) {
+          ws_send_putPixel(x + l_x, y + l_y, l_imgcc[bi]);
+          return l_timeout = window.setTimeout(bot_loop, (RATELIMIT_SEC * 1000) + 50);
+        }
+      }
+    }
+    // If we made it here, then all pixels match already
+    // Wait a little bit and try again
+    return l_timeout = window.setTimeout(bot_loop, 100);
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Stop running the bot and clear all bot-related UI
+  bot_cancel = function() {
+    // Cancel bot loop
+    if (l_timeout != null) {
+      window.clearTimeout(l_timeout);
+    }
+    l_timeout = null;
+    // Erase stored data
+    l_imgcc = null;
+    l_x = l_y = 0;
+    l_w = l_h = 0;
+    // Show bot icon again
+    $('.panel.button.bot').removeClass('cancel');
+    // Set canvas size to 0
+    $('canvas.bot').prop('width', 0).prop('height', 0);
+    // Hide the bot canvas, re-show pixel placement reticule
+    $('canvas.bot').addClass('hidden');
+    $('.reticule').removeClass('hidden');
+    // Reset min/max position to restore full movement
+    g_pos.setMin().setMax();
+    // Switch status appropriately
+    switch (g_role) {
+      case ADMN:
+        return status_set(STATUS_PLACETILE);
+      case AUTH:
+        if (g_cooldown) {
+          return status_set(STATUS_COOLDOWN, g_cooldown);
+        } else {
+          return status_set(STATUS_PLACETILE);
+        }
+    }
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Used by admins to insta-place images
+  bot_place = function() {
+    // Retrieve x,y coords for image top-left
+    l_x = g_pos.xf - Math.floor(l_w / 2);
+    l_y = g_pos.yf - Math.floor(l_h / 2);
+    // Send image placement message
+    ws_send_putImage(l_x, l_y, l_w, l_h, l_imgcc);
+    // Nothing to do here
+    return bot_cancel();
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Animate bot-placement canvas
+  bot_animateUI = function() {
+    var br, h, offx, offy, tl, w;
+    // Grab width and height
+    w = $('canvas.bot').prop('width');
+    h = $('canvas.bot').prop('height');
+    // Determine center offset from top-left so image renders in center
+    offx = Math.floor(w / 2);
+    offy = Math.floor(h / 2);
+    // Retrieve coordinates for top-left and bottom-right
+
+    // If we're actively placing, lock canvas in place
+    if (l_timeout != null) {
+      tl = canvas_getMouseFromXY(l_x, l_y);
+      br = canvas_getMouseFromXY(l_x + l_w, l_y + l_h);
+    } else {
+      // If we're not actively placing anything, let the user position the canvas
+      tl = canvas_getMouseFromXY(g_pos.xf - offx, g_pos.yf - offy);
+      br = canvas_getMouseFromXY(g_pos.xf - offx + w, g_pos.yf - offy + h);
+    }
+    // Position canvas appropriately
+    $('canvas.bot').css({
+      top: (tl.my - 3) + 'px',
+      left: (tl.mx - 3) + 'px',
+      width: (br.mx - tl.mx) + 'px',
+      height: (br.my - tl.my) + 'px'
+    });
+    return window.requestAnimationFrame(bot_animateUI);
+  };
+
+  //###############################################################################
+  // Initialization
+  $(function() {
+    // Start the bot animation loop
+    return window.requestAnimationFrame(bot_animateUI);
+  });
+
+  //###############################################################################
   // Event handling
   $(function() {
+    /////////////////////////////////////////////////////////////////////////////
+    // Click the bot: Begin bot placement flow
     return $('.panel.button.bot').on('click', function(e) {
       var fsel;
+      //=======================================================================
+      // Step 0: Check for alternate states
+      switch (status_get()) {
+        //-------------------------------------------------------------------
+        // Cancel placement if we're positioning or running the bot
+        case STATUS_BOTPOS:
+        case STATUS_BOTRUN:
+          bot_cancel();
+          return false;
+      }
+      //=======================================================================
+      // Step 1: Select an image file
+
       // Create a new file selection element
       fsel = $("<input type='file' accept='image/png'>");
       // Simulate a click to open file select dialog
       fsel.click();
       // Set callback to run when user selects a file
       return fsel.on('change', async function(e) {
-        var userimg;
+        var canvas_data, cc, img, img_dv, img_rgba, n, ref1, rgba;
         if (!e.target.files.length) {
-          alert('no file'); // TODO
+          bot_cancel();
         }
-        
+        //===================================================================
+        // Step 2: Process image
+
+        //-------------------------------------------------------------------
         // Decode image
-        userimg = UPNG.decode((await e.target.files[0].arrayBuffer()));
-        return console.log(userimg);
+
+        // TODO error handling
+        img = UPNG.decode((await e.target.files[0].arrayBuffer()));
+        // Array of color codes for this image, stored for later
+        l_imgcc = new Uint8Array(img.width * img.height);
+        // Convert image to RGBA values
+        img_rgba = UPNG.toRGBA8(img)[0];
+        // And get a data view
+        img_dv = new DataView(img_rgba);
+        // Also store image width and height for later
+        l_w = img.width;
+        l_h = img.height;
+//-------------------------------------------------------------------
+// Convert to color codes
+
+        // Loop over all pixels
+        for (i = n = 0, ref1 = l_imgcc.length; (0 <= ref1 ? n < ref1 : n > ref1); i = 0 <= ref1 ? ++n : --n) {
+          // Get color code for this pixel
+          rgba = img_dv.getUint32(i * 4);
+          cc = PALETTE_INTS.indexOf(rgba);
+          // If this is a valid color, set value appropriately
+          if (cc !== -1) {
+            l_imgcc[i] = cc;
+          } else {
+            // If this is an invalid color, set to transparent
+            // and treat as if it doesn't exist
+            l_imgcc[i] = 0xFF;
+            img_dv.setUint32(i * 4, 0x00000000);
+          }
+        }
+        //===================================================================
+        // Step 3: Display and position image
+
+        //-------------------------------------------------------------------
+        // Position and draw image
+
+        // Set bot canvas properties
+        $('canvas.bot').prop('width', img.width).prop('height', img.height);
+        // Draw onto image
+        // This took a LOT of fiddling to get right
+        canvas_data = $('canvas.bot')[0].getContext('2d').getImageData(0, 0, img.width, img.height);
+        canvas_data.data.set(new Uint8Array(img_rgba));
+        $('canvas.bot')[0].getContext('2d').putImageData(canvas_data, 0, 0);
+        //-------------------------------------------------------------------
+        // Misc
+
+        // Set min/max position to not draw over the edge
+        // TODO +1 seems wrong
+        g_pos.setMin(Math.floor(img.width / 2), Math.floor(img.height / 2));
+        g_pos.setMax(BOARD_WIDTH - Math.ceil(img.width / 2) + 1, BOARD_HEIGHT - Math.ceil(img.height / 2) + 1);
+        // Show canvas, hide pixel placement reticule
+        $('canvas.bot').removeClass('hidden');
+        $('.reticule').addClass('hidden');
+        // Display X over bot
+        $('.panel.button.bot').addClass('cancel');
+        // Set status appropriately
+        return status_set(STATUS_BOTPOS);
       });
     });
   });
 
 }).call(this);
 </script>
-		<style>@font-face{font-family:"Noto Sans";font-weight:normal;src:url("/resources/fonts/NotoSans-Regular.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;src:url("/resources/fonts/NotoSans-Bold.ttf")}@font-face{font-family:"Noto Sans";font-weight:normal;font-style:italic;src:url("/resources/fonts/NotoSans-Italic.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;font-style:italic;src:url("/resources/fonts/NotoSans-BoldItalic.ttf")}@font-face{font-family:"Noto Sans Mono";src:url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.button{border-radius:1.5vh;width:6vh;height:6vh;background-repeat:no-repeat}.panel.hidden{display:none}.panel.pos-zoom{font-family:"Noto Sans Mono";font-weight:700;top:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:12em}.panel.status{font-family:"Noto Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.panel.button.donate{top:3vh;left:3vh}.panel.button.about{top:3vh;right:3vh}.panel.button.settings{top:3vh;right:12vh}.panel.button.bot{bottom:3vh;left:3vh;background-image:url("/resources/bot.svg");background-size:80%;background-position:55% 55%}input#bot_upload{position:fixed;top:-100vh;left:-100vh;width:1vh;height:1vh}.panel.button.admin{bottom:3vh;left:3vh}.panel.button.chat{bottom:3vh;right:3vh}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas{position:fixed;z-index:0;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges}.reticule{position:fixed;z-index:1;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}canvas.smooth-animation{transition:transform .5s ease-out}
+		<style>@font-face{font-family:"Noto Sans";font-weight:normal;src:url("/resources/fonts/NotoSans-Regular.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;src:url("/resources/fonts/NotoSans-Bold.ttf")}@font-face{font-family:"Noto Sans";font-weight:normal;font-style:italic;src:url("/resources/fonts/NotoSans-Italic.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;font-style:italic;src:url("/resources/fonts/NotoSans-BoldItalic.ttf")}@font-face{font-family:"Noto Sans Mono";src:url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.button{border-radius:1.5vh;width:6vh;height:6vh;background-repeat:no-repeat}.panel.hidden{display:none}.panel.pos-zoom{font-family:"Noto Sans Mono";font-weight:700;top:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:12em}.panel.status{font-family:"Noto Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.panel.button.donate{top:3vh;left:3vh}.panel.button.about{top:3vh;right:3vh}.panel.button.settings{top:12vh;right:3vh}.panel.button.bot{bottom:3vh;left:3vh;background-image:url("/resources/bot.svg");background-size:80%;background-position:55% 55%}.panel.button.bot.cancel{background-image:url("/resources/cancel.svg");background-size:80%;background-position:50% 50%}.panel.button.admin{bottom:12vh;left:3vh}.panel.button.chat{bottom:3vh;right:3vh}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/resources/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/resources/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas.place{position:fixed;z-index:0;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges}canvas.place.smooth-animation{transition:transform .5s ease-out}.reticule{position:fixed;z-index:1;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}.reticule.hidden{display:none}canvas.bot{position:fixed;z-index:1;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;outline:3px solid #333;border:3px solid #ccc}canvas.bot.hidden{display:none}
 </style>
 	</head>
 	<body class="select-none">
-<div class="panel pos-zoom select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings hidden"></div><div class="panel button about"></div><div class="panel button bot hidden"></div><div class="panel button admin hidden"></div><div class="panel button chat hidden"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="select.svg"/></div><div class="popup about"></div></body>
+<div class="panel pos-zoom select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings hidden"></div><div class="panel button about"></div><div class="panel button bot hidden"></div><div class="panel button admin hidden"></div><div class="panel button chat hidden"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas class="place" noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="/resources/select.svg"/></div><canvas class="bot hidden" noselect="noselect"></canvas><div class="popup about"></div></body>
 </html>

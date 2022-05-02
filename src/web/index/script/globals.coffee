@@ -19,7 +19,15 @@ MSG_S_COOLDOWN  = 0x40
 # Client messages
 
 MSG_C_PLACE     = 0xA0
-#MSG_C_RECT      = 0xA1
+MSG_C_IMAGE     = 0xA1
+
+#///////////////////////////////////////////////////////////////////////////////
+# User roles
+
+ANON = 0x80
+AUTH = 0x81
+BANN = 0x82
+ADMN = 0x83
 
 #///////////////////////////////////////////////////////////////////////////////
 # Statuses
@@ -31,6 +39,8 @@ STATUS_CONNERR   = 'connerr'
 STATUS_DCONN     = 'dconn'
 STATUS_COOLDOWN  = 'cooldown'
 STATUS_BANNED    = 'banned'
+STATUS_BOTPOS    = 'botpos'
+STATUS_BOTRUN    = 'botrun'
 
 #///////////////////////////////////////////////////////////////////////////////
 # Color palette
@@ -70,6 +80,11 @@ PALETTE = [
 	[0xFF, 0xFF, 0xFF, 0xFF],
 ]
 
+# Palette as uint32's
+# Generate from PALETTE
+PALETTE_INTS = new Uint32Array PALETTE.length
+for i in [0 ... PALETTE.length] then PALETTE_INTS[i] = PALETTE[i][0] << 24 | PALETTE[i][1] << 16 | PALETTE[i][2] << 8 | PALETTE[i][3] << 0
+
 #///////////////////////////////////////////////////////////////////////////////
 # Miscellany
 
@@ -81,9 +96,14 @@ RATELIMIT_SEC = 10
 # Variables
 
 # In-memory representation of the board as palette indices
-g_board = new Uint8Array(BOARD_WIDTH * BOARD_HEIGHT)
+g_board = new Uint8ClampedArray(BOARD_WIDTH * BOARD_HEIGHT)
 
 # Canvas positioning
 # To be handled by the position file
 g_pos = null
 
+# User role
+g_role = ANON
+
+# Cooldown left in seconds
+g_cooldown = null

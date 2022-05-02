@@ -2,7 +2,7 @@
 # Globals
 
 # The websocket
-ws = null
+l_ws = null
 
 ################################################################################
 # Helpful functions
@@ -14,10 +14,10 @@ ws = null
 ws_paintBoard = (wsdv) ->
 
 	# Overwrite our in-memory board state
-	g_board = wsdv.buffer.slice 1, wsdv.buffer.length
+	g_board = new Uint8ClampedArray wsdv.buffer.slice 1, wsdv.buffer.length
 
 	# Grab canvas context and image data
-	cx = $('canvas')[0].getContext '2d'
+	cx = $('canvas.place')[0].getContext '2d'
 	id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
 
 	# Process each color code passed to us
@@ -35,7 +35,7 @@ ws_paintBoard = (wsdv) ->
 ws_updateBoard = (wsdv) ->
 
 	# Grab canvas context and image data
-	cx = $('canvas')[0].getContext '2d'
+	cx = $('canvas.place')[0].getContext '2d'
 	id = cx.getImageData 0, 0, BOARD_WIDTH, BOARD_HEIGHT
 
 	# Process each color code passed to us
@@ -59,6 +59,77 @@ ws_updateBoard = (wsdv) ->
 	cx.putImageData id, 0, 0
 
 ################################################################################
+# Message sending functions
+
+#===============================================================================
+# Send a "place pixel" message
+
+ws_send_putPixel = (x, y, c) ->
+
+		#-----------------------------------------------------------------------
+		# Initialization
+
+		# Message variables
+		ab = new ArrayBuffer 5
+		dv = new DataView ab
+
+		#-----------------------------------------------------------------------
+		# Header
+
+		# Message type
+		dv.setUint8 0, MSG_C_PLACE
+
+		#-----------------------------------------------------------------------
+		# Payload
+
+		# Create a packed pixel with color and position
+		pixel = ((x + (y * BOARD_WIDTH)) << 8) | c
+
+		# Plop the packed pixel in place
+		dv.setUint32 1, pixel
+
+		#-----------------------------------------------------------------------
+		# Send
+
+		l_ws.send dv
+
+#===============================================================================
+# Send a "place image" message
+# ADMN use only, server rejects these messages if sent by other roles
+
+ws_send_putImage = (x, y, w, h, ccs) ->
+
+	#-----------------------------------------------------------------------
+	# Initialization
+
+	# Message variables
+	ab = new ArrayBuffer 9 + (w * h)
+	dv = new DataView ab
+	ua = new Uint8Array ab
+
+	#-----------------------------------------------------------------------
+	# Header
+
+	# Message type
+	dv.setUint8 0, MSG_C_IMAGE
+
+	# Set x/y/w/h
+	dv.setUint16 1, x
+	dv.setUint16 3, y
+	dv.setUint16 5, w
+	dv.setUint16 7, h
+
+	#-----------------------------------------------------------------------
+	# Payload
+
+	ua.set ccs, 9
+
+	#-----------------------------------------------------------------------
+	# Send
+
+	l_ws.send dv
+
+################################################################################
 # Initialization
 
 $ ->
@@ -79,7 +150,7 @@ $ ->
 	#///////////////////////////////////////////////////////////////////////////
 	# Establish Websocket connection
 
-	ws = new WebSocket wsurl
+	l_ws = new WebSocket wsurl
 
 ################################################################################
 # Event handling
@@ -89,13 +160,13 @@ $ ->
 	#///////////////////////////////////////////////////////////////////////////
 	# Handle errors and closure
 
-	ws.onerror = ws.onclose = (e) ->
+	l_ws.onerror = l_ws.onclose = (e) ->
 		status_set STATUS_DCONN
 	
 	#///////////////////////////////////////////////////////////////////////////
 	# Handle messages
 
-	ws.onmessage = ({data}) ->
+	l_ws.onmessage = ({data}) ->
 
 		#=======================================================================
 		# Initialization
@@ -123,6 +194,9 @@ $ ->
 
 				when MSG_S_BOARDAUTH
 
+					# Set role
+					g_role = AUTH
+
 					# Show appropriate buttons
 					$('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass 'hidden'
 
@@ -134,16 +208,27 @@ $ ->
 
 				when MSG_S_BOARDADMN
 
+					# Set role
+					g_role = ADMN
+
 					# Remove rate limiting
 					RATELIMIT_SEC = 0
 
 					# Show appropriate buttons
-					$('.panel.button.chat, .panel.button.settings, .panel.button.admin').removeClass 'hidden'
+					$('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass 'hidden'
+
+					# Set status
+					status_set STATUS_PLACETILE
 
 				#---------------------------------------------------------------
 				# Board initialization: Banned user
 
 				when MSG_S_BOARDBANN
+
+					# Set role
+					g_role = BANN
+
+					# Tell the user they suk
 					status_set STATUS_BANNED
 				
 				#---------------------------------------------------------------

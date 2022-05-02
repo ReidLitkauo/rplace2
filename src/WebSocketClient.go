@@ -1,4 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
+// /src/WebSocketClient.go
 // Handles a single client connection.
 
 package main
@@ -6,17 +7,17 @@ package main
 import (
 	"github.com/rs/zerolog/log"
 	"net/http"
-	"encoding/binary"
+	//"encoding/binary"
 	"github.com/gorilla/websocket"
 	"database/sql"
 )
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Struct definition
 
 type WebSocketClient struct {
 
-	//==========================================================================
+	////////////////////////////////////////////////////////////////////////////
 	// Public fields
 
 	// This client's username, if any
@@ -25,7 +26,7 @@ type WebSocketClient struct {
 	// This user's role
 	Role int
 
-	//==========================================================================
+	////////////////////////////////////////////////////////////////////////////
 	// Private fields
 
 	// The hub this client is connected to
@@ -42,15 +43,15 @@ type WebSocketClient struct {
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Public methods
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Constructor
 
 func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r *http.Request) *WebSocketClient {
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Perform authentication
 
 	// Variable declaration
@@ -58,7 +59,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	var username string
 	role := (int)(ROLE_ANON) // Default
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Get session from query
 
 	// Retrieve session cookie
@@ -67,7 +68,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	// We actually do have a session
 	if session != "" {
 
-		// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+		//----------------------------------------------------------------------
 		// Get username from session
 
 		userrow := db.QueryRow("SELECT username FROM sessions WHERE session IS ?", session)
@@ -95,7 +96,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 		// Found a username
 		if username != "" {
 
-			// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+			//----------------------------------------------------------------------
 			// Get role from username
 
 			rolerow := db.QueryRow("SELECT role FROM users WHERE username IS ?", username)
@@ -112,7 +113,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Upgrade connection
 
 	// Specifications for the websocket upgrader
@@ -136,7 +137,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	// TODO constants
 	ws.SetReadLimit(64)
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Set up and return object
 
 	// Create the new WSClient object
@@ -166,7 +167,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Message handling
 
 // Send a message to this client
@@ -174,10 +175,10 @@ func (this *WebSocketClient) SendMessage (m *websocket.PreparedMessage) {
 	this.send <- m
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Private methods
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // GOROUTINE Send out all queued messages
 
 func (this *WebSocketClient) handleSend () {
@@ -189,6 +190,7 @@ func (this *WebSocketClient) handleSend () {
 	}()
 
 	// Main handling loop
+	// Pretty dumb, just write all messages queued
 	for { select {
 
 		case msg := <- this.send:
@@ -199,7 +201,7 @@ func (this *WebSocketClient) handleSend () {
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // GOROUTINE Receive messages from client
 
 func (this *WebSocketClient) handleRecv () {
@@ -210,24 +212,15 @@ func (this *WebSocketClient) handleRecv () {
 		this.ws.Close()
 	}()
 
-	// Main handling loop
+	// Start main handling loop
 	for {
 
 		// Wait for the next message, breaking upon closure
 		_, msg, err := this.ws.ReadMessage()
 		if err != nil { break }
 
-		// Process different types of messages
-		switch msg[0] {
-
-			// Place a pixel
-			case MSG_C_PLACE:
-
-				// Convert the next four bytes into an encoded uint32
-				// and add to the hub's queue
-				this.wsh.RequestPlacePixel(this, binary.BigEndian.Uint32(msg[1:5]))
-
-		}
+		// See if the message will be accepted
+		this.wsh.RequestAcceptMessage(this, msg)
 
 	}
 

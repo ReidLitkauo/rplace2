@@ -59,4 +59,12 @@ window.lang = {
 		'en': "Your account is banned",
 	},
 
+	'status_botpos': {
+		'en': "Place image",
+	},
+
+	'status_botrun': {
+		'en': "Placing image..."
+	},
+
 }

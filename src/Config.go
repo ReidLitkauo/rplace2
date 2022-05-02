@@ -23,8 +23,9 @@ type Config struct {
 	Serve_origin string `fig:"serve_origin" validate:"required"`
 
 	Board struct {
-		Width  uint32 `fig:"width"  default:2000`
-		Height uint32 `fig:"height" default:2000`
+		Width  uint16 `fig:"width"  default:2000`
+		Height uint16 `fig:"height" default:2000`
+		Colors byte   `fig:"colors" default:32`
 	}
 
 	Timers struct {

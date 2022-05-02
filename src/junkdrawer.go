@@ -15,15 +15,15 @@ func PackPixel2 (i uint32, c byte) (uint32) {
 	return ((i & 0xFFFFFF) << 8) | (((uint32)(c) & 0xFF) << 0)
 }
 
-func PackPixel3 (x uint32, y uint32, c byte) (uint32) {
-	return PackPixel2( x + (y * g_cfg.Board.Width), c )
+func PackPixel3 (x uint16, y uint16, c byte) (uint32) {
+	return PackPixel2( ((uint32)(x)) + (((uint32)(y)) * ((uint32)(g_cfg.Board.Width))), c )
 }
 
 func UnpackPixel2 (p uint32) (uint32, byte) {
 	return ((p >> 8) & 0xFFFFFF), (byte)((p >> 0) & 0xFF)
 }
 
-func UnpackPixel3 (p uint32) (uint32, uint32, byte) {
+func UnpackPixel3 (p uint32) (uint16, uint16, byte) {
 	i, c := UnpackPixel2(p)
-	return i % g_cfg.Board.Width, i / g_cfg.Board.Width, c
+	return (uint16)(i % ((uint32)(g_cfg.Board.Width))), (uint16)(i / ((uint32)(g_cfg.Board.Width))), c
 }

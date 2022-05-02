@@ -75,32 +75,16 @@ $ ->
 		e.preventDefault()
 
 		#=======================================================================
-		# Craft and send a pixel-placement message
+		# Send a pixel-placement message
 
-		# Message variables
-		ab = new ArrayBuffer(5)
-		dv = new DataView(ab)
-
-		# Set message header
-		dv.setUint8(0, MSG_C_PLACE)
-
-		# Determine color
-		c = $('.palette .colors .color.selected')[0].dataset.index
-
-		# Create a packed pixel with color and position
-		pixel = ((g_pos.xf + (g_pos.yf * BOARD_WIDTH)) << 8) | c
-
-		# Plop the packed pixel in place
-		dv.setUint32(1, pixel)
-
-		# ... and send
-		ws.send(dv)
+		ws_send_putPixel g_pos.xf, g_pos.yf, $('.palette .colors .color.selected')[0].dataset.index
 
 		#=======================================================================
 		# Update the UI
 
-		# Show timeout status
-		status_set STATUS_COOLDOWN
+		# Show appropriate follow-up status
+		if g_role is ADMN then status_set STATUS_PLACETILE
+		if g_role is AUTH then status_set STATUS_COOLDOWN
 
 		# Clean the palette UI
 		palette_clearUI()

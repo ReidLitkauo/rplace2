@@ -33,7 +33,7 @@ canvas_getRawTransform = (x, y, z) ->
 canvas_getXYFromMouse = (mx, my) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
-	bb = $('canvas')[0].getBoundingClientRect()
+	bb = $('canvas.place')[0].getBoundingClientRect()
 
 	# Re-orient mouse coordinates to use top-left of canvas as origin
 	xc = mx - bb.x
@@ -60,7 +60,7 @@ canvas_getXYFromMouse = (mx, my) ->
 canvas_getMouseFromXY = (x, y) ->
 
 	# Grab canvas bounding box, this will take transforms into consideration
-	bb = $('canvas')[0].getBoundingClientRect()
+	bb = $('canvas.place')[0].getBoundingClientRect()
 
 	# Get coords as percentage of canvas TODO
 	xp = x / BOARD_WIDTH
@@ -74,6 +74,7 @@ canvas_getMouseFromXY = (x, y) ->
 	mx = xc + bb.x
 	my = yc + bb.y
 
+	# Return
 	{ mx: mx, my: my }
 
 #///////////////////////////////////////////////////////////////////////////////
@@ -82,7 +83,7 @@ canvas_getMouseFromXY = (x, y) ->
 
 canvas_applyPos = () ->
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Move the canvas parent to the correct spot
 
 	# Grab raw transform values
@@ -90,14 +91,14 @@ canvas_applyPos = () ->
 
 	# Format correctly and apply to element designed to handle these transforms
 	# Other DOM elements will resize and move appropriately
-	$('canvas').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
+	$('canvas.place').css 'transform', "scale(#{t.sf}) translate(-#{t.txp}%, -#{t.typ}%)"
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Update the XYZ UI element at the top
 
 	$('.panel.pos-zoom').text "(#{g_pos.xf},#{g_pos.yf}) #{g_pos.zl}x"
 
-	#   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   #   
+	#===========================================================================
 	# Miscellany
 
 	# Prevent artifacting/smearing
@@ -109,6 +110,9 @@ canvas_applyPos = () ->
 
 canvas_animateUI = () ->
 
+	#===========================================================================
+	# Pixel selection reticule
+
 	# Retrieve coordinates for top-left and bottom-right
 	tl = canvas_getMouseFromXY g_pos.xf, g_pos.yf
 	br = canvas_getMouseFromXY 1 + g_pos.xf, 1 + g_pos.yf
@@ -117,9 +121,12 @@ canvas_animateUI = () ->
 	$('.reticule').css {
 		top:    tl.my + 'px'
 		left:   tl.mx + 'px'
-		width:  (br.my - tl.my) + 'px'
-		height: (br.mx - tl.mx) + 'px'
+		width:  (br.mx - tl.mx) + 'px'
+		height: (br.my - tl.my) + 'px'
 	}
+
+	#===========================================================================
+	# Cleanup
 
 	# DO IT AGAIN
 	window.requestAnimationFrame canvas_animateUI
@@ -158,7 +165,7 @@ $ ->
 		else
 
 			# Remove transition smoothing, we want to be responsive
-			$('canvas').removeClass 'smooth-animation'
+			$('canvas.place').removeClass 'smooth-animation'
 
 			# Establishing an anchor point
 			anchorX = g_pos.x
@@ -170,7 +177,7 @@ $ ->
 	# Mouseup: Re-apply animation smoothing
 
 	$('body').on 'mouseup', (e) ->
-		$('canvas').addClass 'smooth-animation'
+		$('canvas.place').addClass 'smooth-animation'
 	
 	#===========================================================================
 	# Click: Open pallete and set coords
@@ -187,7 +194,6 @@ $ ->
 			# If clicked in the canvas, center on that location
 			if !coords.invalid
 				g_pos.set Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null
-				canvas_applyPos()
 
 				# Also show the palette if we can
 				if status_get() == 'placetile'
@@ -206,8 +212,8 @@ $ ->
 			moveYpx = e.originalEvent.y - anchorMY
 			
 			# Get the size of the element in pixels
-			realsizeX = $('canvas').width()
-			realsizeY = $('canvas').height()
+			realsizeX = $('canvas.place').width()
+			realsizeY = $('canvas.place').height()
 			
 			# Convert these coordinates in client space into a percentage of
 			# the element. What percent of the element have we traversed since
@@ -217,9 +223,6 @@ $ ->
 
 			# Set position appropriately
 			g_pos.set anchorX - (moveXratio * BOARD_WIDTH), anchorY - (moveYratio * BOARD_HEIGHT), null
-
-			# Actually do the moving
-			canvas_applyPos()
 
 	#///////////////////////////////////////////////////////////////////////////////
 	# Process scroll wheel
@@ -235,7 +238,7 @@ $ ->
 		g_pos.add 0, 0, zl_add
 
 		# Remove smoothing
-		$('canvas').removeClass 'smooth-animation'
+		$('canvas.place').removeClass 'smooth-animation'
 
 		# Render the canvas zoom
 		canvas_applyPos()
@@ -250,5 +253,5 @@ $ ->
 
 
 		# Re-add smoothing if we're not holding a mouse button
-		if !e.buttons then $('canvas').addClass 'smooth-animation'
+		if !e.buttons then $('canvas.place').addClass 'smooth-animation'
 	

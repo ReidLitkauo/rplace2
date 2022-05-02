@@ -42,6 +42,7 @@ const (
 	// Client message types
 
 	MSG_C_PLACE = 0xA0
+	MSG_C_IMAGE = 0xA1
 	//MSG_C_RECT  = 0xA1
 
 )

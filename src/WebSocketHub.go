@@ -1,4 +1,5 @@
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
+// /src/WebSocketClient.go
 // Manages all websocket connections.
 
 package main
@@ -12,10 +13,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Struct definition
 
 type WebSocketHub struct {
+
+	////////////////////////////////////////////////////////////////////////////
+	// Private fields
 
 	// List of clients
 	clients map[*WebSocketClient]bool
@@ -29,6 +33,14 @@ type WebSocketHub struct {
 	// Next 12 bits: y coord
 	// Last 8 bits: color code
 	placedPixels chan uint32
+
+	// Images placed by clients
+	// uint16 xcoord
+	// uint16 ycoord
+	// uint16 width
+	// uint16 height
+	// then raw color code data
+	placedImages chan []byte
 
 	// Current board
 	board []byte
@@ -47,10 +59,12 @@ type WebSocketHub struct {
 
 }
 
+//##############################################################################
+// Public methods
+
 ////////////////////////////////////////////////////////////////////////////////
 // Constructor
 
-// Initializes and runs a new web socket manager
 func NewWebSocketHub () *WebSocketHub { 
 	
 	//==========================================================================
@@ -61,7 +75,8 @@ func NewWebSocketHub () *WebSocketHub {
 		reg: make(chan *WebSocketClient),
 		dereg: make(chan *WebSocketClient),
 		placedPixels: make(chan uint32),
-		board: make([]byte, g_cfg.Board.Width * g_cfg.Board.Height),
+		placedImages: make(chan []byte),
+		board: make([]byte, (uint32)(g_cfg.Board.Width) * (uint32)(g_cfg.Board.Height)),
 		changes: make(map[uint32]byte),
 		tsplaced: make(map[string]int64),
 		tickerUpdate: nil,
@@ -98,17 +113,16 @@ func NewWebSocketHub () *WebSocketHub {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Public methods
+// Returns a list of messages a new client should send to its user
 
-//==============================================================================
 func (this *WebSocketHub) GetInitializationMessages (username string, role int) []*websocket.PreparedMessage {
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Initialization
 
 	ret := make([]*websocket.PreparedMessage, 0)
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Prepare board message
 
 	// Map role to message type
@@ -128,7 +142,7 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 
 	ret = append(ret, msgboardprep)
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Prepare optional rate-limit message
 
 	// Determine how much time is left in cooldown
@@ -155,64 +169,112 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Send out init messages
 
 	return ret
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
+// Registration and deregistration
+
 func (this *WebSocketHub) RequestRegistration (c *WebSocketClient) {
 	this.reg <- c
 }
 
-//==============================================================================
 func (this *WebSocketHub) RequestDeregistration (c *WebSocketClient) {
 	this.dereg <- c
 }
 
-//==============================================================================
-func (this *WebSocketHub) RequestPlacePixel (c *WebSocketClient, px uint32) bool {
+////////////////////////////////////////////////////////////////////////////////
+// Request accepting a message
+// A client calls this method when it has a message it wants to send to the hub
 
-	//--------------------------------------------------------------------------
+func (this *WebSocketHub) RequestAcceptMessage (c *WebSocketClient, msg []byte) bool {
+
+	//==========================================================================
 	// Initialization
 
 	// Get current time
 	now := time.Now().Unix()
 
-	//--------------------------------------------------------------------------
-	// Rejection scenarios
+	// Get message type
+	msgtype := msg[0]
 
-	// Reject all pixels placed by non-authenticated users
-	// ... how would we even get here? meh
-	if c.Username == "" { return false }
+	switch msgtype {
 
-	// Reject if request is being placed too soon after the last pixel placed
-	// aka rate limiting
-	if now < this.tsplaced[c.Username] + g_cfg.Pixel_rate_sec { return false }
+		//======================================================================
+		// Pixel placement
 
-	//--------------------------------------------------------------------------
-	// Approved
+		case MSG_C_PLACE:
 
-	// Set timestamp for last placed pixel
-	this.tsplaced[c.Username] = now
+			//------------------------------------------------------------------
+			// Rejection scenarios
 
-	// Place pixel in queue
-	this.placedPixels <- px
+			// Reject all from anon and banned users
+			if c.Role == ROLE_ANON || c.Role == ROLE_BANN { return false }
 
-	return true
+			// Enforce rate limiting for normal users
+			if tsplaced, ok := this.tsplaced[c.Username]; ok && c.Role == ROLE_AUTH {
+				if now < tsplaced + g_cfg.Pixel_rate_sec {
+					return false
+			} }
+
+			//------------------------------------------------------------------
+			// Processing
+
+			// Extract packed pixel from message
+			px := binary.BigEndian.Uint32(msg[1:5])
+
+			//------------------------------------------------------------------
+			// Approval
+
+			// Set new timestamp for last placed pixel
+			this.tsplaced[c.Username] = now
+
+			// Place pixel into queue
+			this.placedPixels <- px
+
+			return true
+		
+		//======================================================================
+		// Image placment
+
+		case MSG_C_IMAGE:
+
+			//------------------------------------------------------------------
+			// Rejection scenarios
+			
+			// ADMN only! Reject all other user roles
+			if c.Role != ROLE_ADMN { return false }
+
+			//------------------------------------------------------------------
+			// Approval
+
+			// Place image into queue
+			this.placedImages <- msg[1:]
+
+			return true
+
+		//======================================================================
+		// Unknown message type
+		
+		default: return false
+
+	}
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Private methods
 
-//==============================================================================
-// Run the manager (designed to be called as a goroutine)
+////////////////////////////////////////////////////////////////////////////////
+// GOROUTINE Handle all messages
+
 func (this *WebSocketHub) run () {
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Initialization
 
 	// Cleanup
@@ -229,7 +291,7 @@ func (this *WebSocketHub) run () {
 	// Handle all messages from all channels
 	for { select {
 
-		//----------------------------------------------------------------------
+		//======================================================================
 		// Process ticker messages
 
 		// Send out board changes since last send tick to all clients
@@ -239,7 +301,7 @@ func (this *WebSocketHub) run () {
 			this.processUpdate()
 			this.processBackup()
 
-		//----------------------------------------------------------------------
+		//======================================================================
 		// Process registration-related requests
 		
 		case c := <- this.reg:
@@ -247,22 +309,87 @@ func (this *WebSocketHub) run () {
 		case c := <- this.dereg:
 			this.deregister(c)
 		
-		//----------------------------------------------------------------------
+		//======================================================================
 		// Process pixel placement
 
 		case p := <- this.placedPixels:
+
+			//------------------------------------------------------------------
+			// Initialization
+
+			// Grab key (index) and value (color code) from pixel
 			k, v := UnpackPixel2(p)
+
+			//------------------------------------------------------------------
+			// Validation
+
+			// Key is out of range
+			if k >= (uint32)(len(this.board)) { break }
+
+			// Value is invalid
+			if v < 0 || v >= g_cfg.Board.Colors { break }
+			
+			//------------------------------------------------------------------
+			// Execution
+
+			// Apply pixel to changes
 			this.changes[k] = v
+		
+		//======================================================================
+		// Process image placement
+
+		case msg := <- this.placedImages:
+
+			//------------------------------------------------------------------
+			// Initialization
+
+			// Grab x/y/w/h
+			x := binary.BigEndian.Uint16(msg[0:2])
+			y := binary.BigEndian.Uint16(msg[2:4])
+			w := binary.BigEndian.Uint16(msg[4:6])
+			h := binary.BigEndian.Uint16(msg[6:8])
+
+			//------------------------------------------------------------------
+			// Validation
+
+			// Ensure image fits entirely on image
+			if x < 0 || (uint16)(x + w) >= g_cfg.Board.Width  { break }
+			if y < 0 || (uint16)(y + h) >= g_cfg.Board.Height { break }
+
+			// Ensure we have exactly enough data associated with the image
+			if (uint16)(len(msg)) != 8 + (w * h) { break }
+
+			//------------------------------------------------------------------
+			// Execution
+
+			// Iterate over the image's rows, then its pixels
+			for yi := (uint16)(0); yi < h; yi++ { for xi := (uint16)(0); xi < w; xi++ {
+
+				// Get image space & board space coords
+				ii :=           xi      +            (yi       *          w)
+				bi := ((uint32)(xi + x)) + (((uint32)(yi + y)) * (uint32)(g_cfg.Board.Width))
+
+				// Get color code
+				cc := msg[8 + ii]
+
+				// Skip all out-of-bounds colors
+				if cc >= g_cfg.Board.Colors { continue }
+
+				// Place into changes
+				this.changes[bi] = cc
+
+			} }
 
 	} }
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Update clients with board changes
+
 func (this *WebSocketHub) processUpdate () {
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Initialization
 
 	// Don't send anything if no changes made
@@ -274,7 +401,7 @@ func (this *WebSocketHub) processUpdate () {
 	// Set message type
 	msgraw[0] = MSG_S_UPDATE
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Processing
 
 	// Loop over all changes, build message and update board state at same time
@@ -299,8 +426,9 @@ func (this *WebSocketHub) processUpdate () {
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Complete backup of board state
+
 func (this *WebSocketHub) processBackup () {
 
 	// Grab a timestamp
@@ -327,19 +455,19 @@ func (this *WebSocketHub) processBackup () {
 
 }
 
-//==============================================================================
-// Register a new client
-// Add the client to clients list
+////////////////////////////////////////////////////////////////////////////////
+// Register / deregister
+
+// Add a new client to the clients list
 func (this *WebSocketHub) register (c *WebSocketClient) {
 	this.clients[c] = true
 }
 
-//==============================================================================
-// Unregister an existing client
-// Terminate the client's connection and remove from clients list
+// Terminate a client's connection and remove from clients list
 func (this *WebSocketHub) deregister (c *WebSocketClient) {
 	if _, exists := this.clients[c]; exists {
 		//c.terminateConnection() // TODO is this necessary?
 		delete(this.clients, c)
 	}
 }
+
