@@ -259,6 +259,12 @@ canvas.place
 	image-rendering: pixelated
 	image-rendering: crisp-edges
 
+	// Add an outline
+	// NOTE This fixes a WEIRD bug that would cause the canvas to smear
+	// all over the body like the bouncing cards from Solitaire
+	// WHY DOES THIS FIX THAT BUG WHAT THE ACTUAL FUCK
+	outline: 1px solid #181818
+
 canvas.place.smooth-animation
 	transition: transform 0.5s ease-out
 

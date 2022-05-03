@@ -90,12 +90,4 @@ for fullroot, directories, filenames in os.walk(in_dir):
 	with open(out_dir + root + '.html', 'w') as of:
 		of.write(final_file)
 
-################################################################################
-# Hard-coded exceptions
-
-# Commented out because this project is a single-page website and therefore doesn't require compiling page templates
-# if should_compile(in_dir + '/\$-template-bridge.pug', out_html + '/\$-template-bridge.php'):
-# 	print('Compiling: ' + in_dir + '/\$-template-bridge.pug -> ' + out_html + '/\$-template-bridge.php')
-# 	os.system("/home/reid/vendor/bin/phug compile-file '" + in_dir + "/\$-template-bridge.pug' -o '" + out_html + "/\$-template-bridge.php'")
-
 END
