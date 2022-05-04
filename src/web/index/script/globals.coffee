@@ -7,6 +7,8 @@
 
 # Server messages
 
+MSG_S_USERINFO  = 0x10
+
 MSG_S_BOARDANON = 0x20
 MSG_S_BOARDAUTH = 0x21
 MSG_S_BOARDBANN = 0x22

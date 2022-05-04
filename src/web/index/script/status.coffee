@@ -33,12 +33,13 @@ status_set = (s, timeleft = RATELIMIT_SEC) ->
 	#===========================================================================
 	# Show status to user
 
-	$('.panel.status').text window.lang['status_' + s]['en']
+	# TODO allow for multiple languages
+	$('.panel.status').text g_text.status[s]['en']
 
 #///////////////////////////////////////////////////////////////////////////////
 # Retrieve status
 
-status_get = () ->
+status_get = ->
 	$('.panel.status')[0].dataset.mode
 
 #///////////////////////////////////////////////////////////////////////////////
@@ -116,7 +117,7 @@ $ ->
 
 			when STATUS_PLACETILE
 				g_pos.set g_pos.xf + 0.5, g_pos.yf + 0.5, null
-				$('.palette').removeClass('hidden')
+				$('.palette').removeClass('-hidden')
 
 			#===================================================================
 			# Bot positioning: Place the image

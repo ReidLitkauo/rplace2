@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg:svg
+   width="22"
+   height="22"
+   viewBox="0 0 22 22"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   sodipodi:docname="cancel.svg"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#505050"
+     bordercolor="#ffffff"
+     borderopacity="1"
+     inkscape:pageshadow="0"
+     inkscape:pageopacity="0"
+     inkscape:pagecheckerboard="1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="16.569631"
+     inkscape:cx="-1.3880816"
+     inkscape:cy="9.9579769"
+     inkscape:window-width="1920"
+     inkscape:window-height="1007"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="layer1" />
+  <svg:defs
+     id="defs2" />
+  <svg:g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <path
+       d="M 0 1 L 1 0 L 6 5 L 11 0 L 12 1 L 7 6 L 12 11 L 11 12 L 6 7 L 1 12 L 0 11 L 5 6 L 0 1"
+       fill="#000000" />
+    <svg:path
+       style="fill:#000000;"
+       d="M 0 1 L 10 11 L 0 21 L 1 22 L 11 12 L 21 22 L 22 21 L 12 11 L 22 1 L 21 0 L 11 10 L 1 0 L 0 1"
+       id="path77" />
+  </svg:g>
+</svg:svg>

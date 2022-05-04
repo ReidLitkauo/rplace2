@@ -118,8 +118,9 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 
 	// Specifications for the websocket upgrader
 	// TODO move these constants to a better spot
+	// TODO be smarter about what I accept from reading
 	upgrader := websocket.Upgrader {
-		ReadBufferSize:  1024,
+		ReadBufferSize:  5000000,
 		WriteBufferSize: 5000000,
 	}
 

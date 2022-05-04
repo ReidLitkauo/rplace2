@@ -4,7 +4,6 @@
 	<head>
 		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
 		<script src="/jquery.cookie.js"></script>
-		<script src="/lang.js"></script>
 		
 <title>place</title><script src="/resources/UPNG.js"></script>
 		<script type="text/javascript">(function() {
@@ -16,7 +15,9 @@
   // Websocket message types
 
   // Server messages
-  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, g_board, g_cooldown, g_pos, g_role, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
+  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, MSG_S_USERINFO, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, canvas_shouldSkipMouseEvent, chat_close, chat_open, g_board, g_cooldown, g_pos, g_role, g_text, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, popup_close, popup_open, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_chat, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
+
+  MSG_S_USERINFO = 0x10;
 
   MSG_S_BOARDANON = 0x20;
 
@@ -98,6 +99,215 @@
 
   // Cooldown left in seconds
   g_cooldown = null;
+
+  //###############################################################################
+  // /web/index/script/text.coffee
+  // All text displayed to the user lives in this file.
+  // Allows for multiple languages to be used, and to switch languages instantly.
+  // In a larger project, this sort of stuff would be stored in a database or
+  // something, and would be handled server-side.
+  // But meh. This project is small enough for this sort of thing to not be that
+  // big of a deal.
+  g_text = {
+    //###########################################################################
+    // Color names
+    // In order of appearance on the palette
+    'colors': [
+      {
+        'en': "Darkest Red"
+      },
+      {
+        'en': "Dark Red"
+      },
+      {
+        'en': "Bright Red"
+      },
+      {
+        'en': "Orange"
+      },
+      {
+        'en': "Yellow"
+      },
+      {
+        'en': "Pale Yellow"
+      },
+      {
+        'en': "Dark Green"
+      },
+      {
+        'en': "Green"
+      },
+      {
+        'en': "Light Green"
+      },
+      {
+        'en': "Dark Teal"
+      },
+      {
+        'en': "Teal"
+      },
+      {
+        'en': "Light Teal"
+      },
+      {
+        'en': "Dark Blue"
+      },
+      {
+        'en': "Blue"
+      },
+      {
+        'en': "Light Blue"
+      },
+      {
+        'en': "Indigo"
+      },
+      {
+        'en': "Periwinkle"
+      },
+      {
+        'en': "Lavender"
+      },
+      {
+        'en': "Dark Purple"
+      },
+      {
+        'en': "Purple"
+      },
+      {
+        'en': "Pale Purple"
+      },
+      {
+        'en': "Magenta"
+      },
+      {
+        'en': "Pink"
+      },
+      {
+        'en': "Light Pink"
+      },
+      {
+        'en': "Dark Brown"
+      },
+      {
+        'en': "Brown"
+      },
+      {
+        'en': "Beige"
+      },
+      {
+        'en': "Black"
+      },
+      {
+        'en': "Dark Gray"
+      },
+      {
+        'en': "Gray"
+      },
+      {
+        'en': "Light Gray"
+      },
+      {
+        'en': "White"
+      }
+    ],
+    //###########################################################################
+    // Statuses
+    // Shown to the user on the status bar at the bottom
+    'status': {
+      /////////////////////////////////////////////////////////////////////////
+      // Loading
+      // Shown when page is initializing, before MSG_S_BOARD* received
+      'loading': {
+        'en': "Loading..."
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Link Account
+      // CTA shown to anons, request linking a Reddit account to use the site
+      'linkacct': {
+        'en': "Link your Reddit account"
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Place Tile
+      // Shown to authorized/admin users, pulls up the color palette
+      'placetile': {
+        'en': "Place a tile"
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Connection Error
+      // Shown when the websocket encounters an error
+      'connerr': {
+        'en': "Couldn't connect!"
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Disconnection
+      // Shown when the user is disconnected from the server
+      'dconn': {
+        'en': "Disconnected"
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Banned
+      // Shown to banned users, prohibits all tile placement
+      'banned': {
+        'en': "Your account is banned"
+      },
+      /////////////////////////////////////////////////////////////////////////
+      // Bot Positioning
+      // Shown to users who are positioning an image for the bot
+      // Should be an invitation to place the image
+      'botpos': {
+        'en': "Place image"
+      },
+      
+      /////////////////////////////////////////////////////////////////////////
+      // Bot Running
+      // Shown when the bot is actively placing images
+      'botrun': {
+        'en': "Placing image..."
+      }
+    },
+    //###########################################################################
+    // Account Validation Errors
+    // Shown as a popup to users when they link their Reddit account
+    'validate': {
+      /////////////////////////////////////////////////////////////////////////
+      // Server Error
+      // Shown to user when something funky happens on my site
+      'servererror': {
+        'en': "This website encountered a technical error while trying to link your account. Please reach out via Discord, or try again later."
+      },
+      /////////////////////////////////////////////////////////////////////////
+      // Reddit Error
+      // Shown to user when something funky happens on Reddit's end
+      'redditerror': {
+        'en': "Reddit ran into a problem while trying to link your account. Please reach out via Discord, or try again later."
+      },
+      /////////////////////////////////////////////////////////////////////////
+      // User Banned
+      // An admin has banned this user
+      'userbanned': {
+        'en': "Your account is banned from this platform. If you feel this is in error, please reach out to an admin on our Discord server."
+      },
+      /////////////////////////////////////////////////////////////////////////
+      // Below Threshold
+      // Account does not meet minimum age/karma requirements
+      'belowthreshold': {
+        'en': "Your account does not meet our minimum age and karma requirements. Please use Reddit a bit more, and try again later."
+      },
+      /////////////////////////////////////////////////////////////////////////
+      // User Denied
+      // The user did not allow the app access to their account
+      // Try to make them feel better, be honest about what we do, and
+      // encourage them to let us know if they have any concerns
+      'userdenied': {
+        'en': "We only need access to your username, account age, and total karma in order to link your account &ndash; not your post/comment history or anything else. If you have concerns about our account linkage flow or what data we collect, please reach out to us via Discord."
+      }
+    }
+  };
 
   //###############################################################################
   // Position declaration
@@ -215,6 +425,22 @@
 
   //###############################################################################
   // Helper functions
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Determine if we should skip this mouse event
+  // Necessary since all events are attached to the BODY
+  canvas_shouldSkipMouseEvent = function(e) {
+    // A popup is open, let that take precedence
+    if ($('.popup:not(.-hidden)').length) {
+      return true;
+    }
+    // Source is the chat box, don't bother with that
+    if ($(e.target).add($(e.target).parents()).is('.chat-parent')) {
+      return true;
+    }
+    // Passed all checks, continue
+    return false;
+  };
 
   /////////////////////////////////////////////////////////////////////////////////
   // Get raw transformation values
@@ -350,8 +576,7 @@
     //===========================================================================
     // Mousedown: Establish anchor point
     $('body').on('mousedown', function(e) {
-      // Do not establish an anchor point if clicking on UI elements
-      if ($(e.target).is('.palette, .panel') || $(e.target).parents().is('.palette, .panel')) {
+      if (canvas_shouldSkipMouseEvent(e) || $(e.target).add($(e.target).parents()).is('.palette, .panel')) {
         anchorX = null;
         anchorY = null;
         anchorMX = null;
@@ -370,6 +595,9 @@
     //===========================================================================
     // Mouseup: Re-apply animation smoothing
     $('body').on('mouseup', function(e) {
+      //if canvas_shouldSkipMouseEvent(e) then return
+
+      // Re-apply animation smoothing
       return $('canvas.place').addClass('smooth-animation');
     });
     
@@ -377,6 +605,9 @@
     // Click: Open pallete and set coords
     $('body').on('click', function(e) {
       var coords;
+      if (canvas_shouldSkipMouseEvent(e)) {
+        return;
+      }
       // Only applies if click's mousedown coords were same as mouseup coords
       if (e.originalEvent.x === anchorMX && e.originalEvent.y === anchorMY) {
         // Obtain pixel that was clicked
@@ -386,7 +617,7 @@
           g_pos.set(Math.floor(coords.x) + 0.5, Math.floor(coords.y) + 0.5, null);
           // Also show the palette if we can
           if (status_get() === 'placetile') {
-            return $('.palette').removeClass('hidden');
+            return $('.palette').removeClass('-hidden');
           }
         }
       }
@@ -396,6 +627,8 @@
     $('body').on('mousemove', function(e) {
       var moveXpx, moveXratio, moveYpx, moveYratio, realsizeX, realsizeY;
       
+      //if canvas_shouldSkipMouseEvent(e) then return
+
       // Only move if a mouse button is pressed and anchor was set
       if (e.buttons && anchorX !== null) {
         // How far away from the anchor is the mouse now?
@@ -419,6 +652,9 @@
     // Process scroll wheel
     return $('body').on('wheel', function(e) {
       var coord, zl_add;
+      if (canvas_shouldSkipMouseEvent(e)) {
+        return;
+      }
       // Determine zoom level to add from event
       zl_add = 0;
       if (e.originalEvent.deltaY < 0) {
@@ -477,7 +713,9 @@
     }
     //===========================================================================
     // Show status to user
-    return $('.panel.status').text(window.lang['status_' + s]['en']);
+
+    // TODO allow for multiple languages
+    return $('.panel.status').text(g_text.status[s]['en']);
   };
 
   /////////////////////////////////////////////////////////////////////////////////
@@ -551,7 +789,7 @@
         // Place tile: Show the palette
         case STATUS_PLACETILE:
           g_pos.set(g_pos.xf + 0.5, g_pos.yf + 0.5, null);
-          return $('.palette').removeClass('hidden');
+          return $('.palette').removeClass('-hidden');
         //===================================================================
         // Bot positioning: Place the image
         case STATUS_BOTPOS:
@@ -585,7 +823,7 @@
     // Clear placement reticule color
     $('.reticule').css('background-color', "transparent");
     // And hide the UI
-    return $('.palette').addClass('hidden');
+    return $('.palette').addClass('-hidden');
   };
 
   //###############################################################################
@@ -653,6 +891,120 @@
       // Clean the palette UI
       palette_clearUI();
       return false;
+    });
+  });
+
+  //###############################################################################
+  // Helper Functions
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Open a popup
+  popup_open = function(popup, extra = null) {
+    //===========================================================================
+    // Special handling: Validation popup
+    // Show the relevant account validation message to the user
+    if (popup === "validate") {
+      // The validate message type to grab is stored in the extra parameter
+
+      // Make sure we have a valid validate message
+      // If not, then do nothing
+      if ((extra == null) || !(extra in g_text.validate)) {
+        return;
+      }
+      
+      // If we do, then show the text of that message
+      // TODO make language-independent
+      $('.popup.validate .text').html(g_text.validate[extra]['en']);
+    }
+    //===========================================================================
+    // General post-processing
+
+    // Close all open popups, only have one open at a time
+    popup_close();
+    // Show the requested popup
+    return $(`.popup.${popup}, .popup-grayout`).removeClass('-hidden');
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Close all popups
+  popup_close = function() {
+    // Hide all popups and the grayout backdrop
+    return $('.popup, .popup-grayout').addClass('-hidden');
+  };
+
+  //###############################################################################
+  // Initialization
+  $(function() {
+    var query, validate_msg;
+    // Parser for the URL's query string
+    query = new URLSearchParams(window.location.search);
+    // Check if we have a validation message to show to the user
+    if ((validate_msg = query.get('validate')) != null) {
+      return popup_open('validate', validate_msg);
+    }
+  });
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
+    // Open popups
+
+    //===========================================================================
+    // About popup
+    $('.panel.button.about').on('click', function(e) {
+      return popup_open('about');
+    });
+    
+    /////////////////////////////////////////////////////////////////////////////
+    // Close popups
+
+    // TODO add close buttons
+    return $('body').on('click', function(e) {
+      // Close popups when user clicks outside of them
+      if ($(e.target).add($(e.target).parents()).is('.popup-grayout')) {
+        return popup_close();
+      }
+      // Close popups when user clicks on a cancel button
+      if ($(e.target).add($(e.target).parents()).is('button.cancel')) {
+        return popup_close();
+      }
+    });
+  });
+
+  //###############################################################################
+  // Helper functions
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Open chat
+  chat_open = function() {
+    return $('.chat-parent').removeClass('-hidden');
+  };
+
+  /////////////////////////////////////////////////////////////////////////////////
+  // Close chat
+  chat_close = function() {
+    return $('.chat-parent').addClass('-hidden');
+  };
+
+  //###############################################################################
+  // Event handling
+  $(function() {
+    /////////////////////////////////////////////////////////////////////////////
+    // Send a message
+    $('.chat-parent form.chat-send').on('submit', function(e) {
+      e.preventDefault();
+      ws_send_chat($('.chat-parent form.chat-send input').val());
+      $('.chat-parent form.chat-send input').val('');
+      return false;
+    });
+    /////////////////////////////////////////////////////////////////////////////
+    // Open and close
+    $('.panel.button.chat').on('click', function(e) {
+      return chat_open();
+    });
+    return $('.chat-parent button.cancel').on('click', function(e) {
+      return chat_close();
     });
   });
 
@@ -772,6 +1124,12 @@
     return l_ws.send(dv);
   };
 
+  //===============================================================================
+  // Send a chat message
+  ws_send_chat = function(msg) {
+    return console.log(new TextEncoder().encode(msg));
+  };
+
   //###############################################################################
   // Initialization
   $(function() {
@@ -817,6 +1175,11 @@
         // Process message
         switch (msgtype) {
           //---------------------------------------------------------------
+          // User information message
+          case MSG_S_USERINFO:
+            console.log(d);
+            break;
+          //---------------------------------------------------------------
           // Board initialization: Unauthenticated user
           case MSG_S_BOARDANON:
             // Tell user to link account to proceed
@@ -829,7 +1192,7 @@
             // Set role
             g_role = AUTH;
             // Show appropriate buttons
-            $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('hidden');
+            $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('-hidden');
             // If we're not rate-limited, allow for pixel placement
             if (status_get() !== STATUS_COOLDOWN) {
               status_set(STATUS_PLACETILE);
@@ -843,7 +1206,7 @@
             // Remove rate limiting
             RATELIMIT_SEC = 0;
             // Show appropriate buttons
-            $('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass('hidden');
+            $('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass('-hidden');
             // Set status
             status_set(STATUS_PLACETILE);
             break;
@@ -909,7 +1272,9 @@
     // Empty bot canvas, but keep the border
     $('canvas.bot')[0].getContext('2d').clearRect(0, 0, l_w, l_h);
     // Show pixel selection reticule
-    $('.reticule').removeClass('hidden');
+    $('.reticule').removeClass('-hidden');
+    // Reset min/max allowable position to allow free roaming
+    g_pos.setMin().setMax();
     // Set position
     l_x = g_pos.xf - Math.floor(l_w / 2);
     l_y = g_pos.yf - Math.floor(l_h / 2);
@@ -966,8 +1331,8 @@
     // Set canvas size to 0
     $('canvas.bot').prop('width', 0).prop('height', 0);
     // Hide the bot canvas, re-show pixel placement reticule
-    $('canvas.bot').addClass('hidden');
-    $('.reticule').removeClass('hidden');
+    $('canvas.bot').addClass('-hidden');
+    $('.reticule').removeClass('-hidden');
     // Reset min/max position to restore full movement
     g_pos.setMin().setMax();
     // Switch status appropriately
@@ -1119,8 +1484,8 @@
         g_pos.setMin(Math.floor(img.width / 2), Math.floor(img.height / 2));
         g_pos.setMax(BOARD_WIDTH - Math.ceil(img.width / 2) + 1, BOARD_HEIGHT - Math.ceil(img.height / 2) + 1);
         // Show canvas, hide pixel placement reticule
-        $('canvas.bot').removeClass('hidden');
-        $('.reticule').addClass('hidden');
+        $('canvas.bot').removeClass('-hidden');
+        $('.reticule').addClass('-hidden');
         // Display X over bot
         $('.panel.button.bot').addClass('cancel');
         // Set status appropriately
@@ -1131,9 +1496,9 @@
 
 }).call(this);
 </script>
-		<style>@font-face{font-family:"Noto Sans";font-weight:normal;src:url("/resources/fonts/NotoSans-Regular.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;src:url("/resources/fonts/NotoSans-Bold.ttf")}@font-face{font-family:"Noto Sans";font-weight:normal;font-style:italic;src:url("/resources/fonts/NotoSans-Italic.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;font-style:italic;src:url("/resources/fonts/NotoSans-BoldItalic.ttf")}@font-face{font-family:"Noto Sans Mono";src:url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")}.select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.button{border-radius:1.5vh;width:6vh;height:6vh;background-repeat:no-repeat}.panel.hidden{display:none}.panel.pos-zoom{font-family:"Noto Sans Mono";font-weight:700;top:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:12em}.panel.status{font-family:"Noto Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.panel.button.donate{top:3vh;left:3vh}.panel.button.about{top:3vh;right:3vh}.panel.button.settings{top:12vh;right:3vh}.panel.button.bot{bottom:3vh;left:3vh;background-image:url("/resources/bot.svg");background-size:80%;background-position:55% 55%}.panel.button.bot.cancel{background-image:url("/resources/cancel.svg");background-size:80%;background-position:50% 50%}.panel.button.admin{bottom:12vh;left:3vh}.panel.button.chat{bottom:3vh;right:3vh}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat;width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/resources/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/resources/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.hidden{bottom:-20vh}canvas.place{position:fixed;z-index:0;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges;outline:1px solid #181818}canvas.place.smooth-animation{transition:transform .5s ease-out}.reticule{position:fixed;z-index:1;pointer-events:none}.reticule img{position:absolute;top:0;left:0;bottom:0;right:0;transform:scale(120%)}.reticule.hidden{display:none}canvas.bot{position:fixed;z-index:1;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;outline:3px solid #333;border:3px solid #ccc}canvas.bot.hidden{display:none}
+		<style>@font-face{font-family:"Noto Sans";font-weight:normal;src:url("/resources/fonts/NotoSans-Regular.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;src:url("/resources/fonts/NotoSans-Bold.ttf")}@font-face{font-family:"Noto Sans";font-weight:normal;font-style:italic;src:url("/resources/fonts/NotoSans-Italic.ttf")}@font-face{font-family:"Noto Sans";font-weight:bold;font-style:italic;src:url("/resources/fonts/NotoSans-BoldItalic.ttf")}@font-face{font-family:"Noto Sans Mono";src:url("/resources/fonts/NotoSansMono-VariableFont_wdth,wght.ttf")}.-select-none{-webkit-touch-callout:none;-webkit-user-select:none;-khtml-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}.-select-text{-webkit-touch-callout:text;-webkit-user-select:text;-khtml-user-select:text;-moz-user-select:text;-ms-user-select:text;user-select:text}.-select-contain{-webkit-touch-callout:contain;-webkit-user-select:contain;-khtml-user-select:contain;-moz-user-select:contain;-ms-user-select:contain;user-select:contain}body{background-color:#333;margin:0;border:0;padding:0;width:100vw;height:100vh;font-size:2vh;font-family:"Noto Sans"}.-hidden{display:none}button{outline:none;border-radius:100vh;border:2px solid #d4d7d9;background:none;background-position:center;background-repeat:no-repeat}button.cancel{background-image:url("/resources/images/cancel.svg")}.panel{position:fixed;z-index:200;background:#fff;box-shadow:0 0 30px #000;border-radius:100vh;color:#000;font-size:90%;text-align:center}.panel.pos-zoom{font-family:"Noto Sans Mono";font-weight:700;top:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:12em}.panel.status{font-family:"Noto Sans";font-weight:bold;bottom:3vh;left:50vw;transform:translateX(-50%);padding:.25em 1em .25em;width:10em}.panel.status .timeleft{display:inline-block}.panel.status img.timeleft{width:.95em;height:.95em;transform:scale(1.5) translate(-20%, 7%)}.panel.status.wide{width:15em}.panel.button{border-radius:1.5vh;width:6vh;height:6vh;background-repeat:no-repeat;background-position:50% 50%}.panel.button.donate{top:3vh;left:3vh;background-image:url("/resources/images/donate-svgrepo-com.svg");background-size:75%;background-position:55% 50%}.panel.button.about{top:3vh;right:3vh;background-image:url("/resources/images/question-mark-button-svgrepo-com.svg");background-size:75%}.panel.button.settings{top:12vh;right:3vh;background-image:url("/resources/images/gear-svgrepo-com.svg");background-size:70%;background-position:50% 55%}.panel.button.bot{bottom:3vh;left:3vh;background-image:url("/resources/images/bot.svg");background-size:80%;background-position:55% 55%}.panel.button.bot.cancel{background-image:url("/resources/images/cancel.svg");background-size:60%}.panel.button.admin{bottom:12vh;left:3vh;transform:scaleX(-1);background-image:url("/resources/images/gavel-svgrepo-com.svg");background-size:80%}.panel.button.chat{bottom:3vh;right:3vh;background-image:url("/resources/images/chat-svgrepo-com.svg");background-size:80%}.palette{position:fixed;z-index:300;bottom:0vh;left:0;width:100vw;background:#fff;box-shadow:0 0 10px #000;transition:bottom .5s ease-in-out}.palette>div{display:block;padding:1.5vh}.palette .colors{padding-bottom:0;display:grid;grid-template-columns:repeat(16, 1fr);grid-column-gap:.3vh;grid-row-gap:.3vh}@media only screen and (orientation: landscape){.palette .colors{grid-template-columns:repeat(32, 1fr)}}.palette .colors .color{height:3vh;border:1px solid #000}.palette .colors .color.selected{border-color:#fff !important;box-shadow:#000 0px 0px 10px 2px}.palette .buttons{display:flex;height:4vh}.palette .buttons .spacer{flex:1 1 auto}.palette .buttons form{position:relative}.palette .buttons button{width:30vw;height:100%}@media only screen and (orientation: landscape){.palette .buttons button{width:12vw}}.palette .buttons form.cancel button{background-image:url("/resources/images/cancel.svg");background-size:2.5vh;margin-right:3vw}.palette .buttons form.submit button{background-image:url("/resources/images/submit.svg");background-size:3.5vh}.palette .buttons form.submit button:not([disabled]){border-color:#f50;box-shadow:inset 0 0 0 2px #f50,inset -1px 0 0 2px #f50,inset 1px 0 0 2px #f50}.palette.-hidden{display:block;bottom:-20vh}canvas.place{position:fixed;z-index:0;transform-origin:top left;width:500vmin;height:500vmin;top:50vh;left:50vw;image-rendering:pixelated;image-rendering:crisp-edges;outline:1px solid #181818}canvas.place.smooth-animation{transition:transform .5s ease-out}.reticule{position:fixed;z-index:1;pointer-events:none}.reticule img{position:absolute;top:0;left:0;width:100%;height:100%;transform:scale(120%)}canvas.bot{position:fixed;z-index:1;pointer-events:none;image-rendering:pixelated;image-rendering:crisp-edges;outline:3px solid #333;border:3px solid #ccc}.popup-grayout{position:fixed;z-index:1000;top:0;left:0;bottom:0;right:0;width:100vw;height:100vh;background-color:rgba(136,136,136,.6666666667);transition:opacity .5s ease-in-out}.popup-grayout.-hidden{display:block;opacity:0;pointer-events:none}.popup{position:fixed;z-index:1001;top:20vh;height:60vh;left:10vw;width:80vw;background:#fff;border-radius:5vh;transition:top .5s cubic-bezier(0.68, -0.55, 0.27, 1.55)}@media only screen and (orientation: landscape){.popup{left:30vw;width:40vw}}.popup.-hidden{display:block;top:120vh !important}.popup.validate{top:25vh;height:50vh;left:20vw;width:60vw;display:grid;grid-template-rows:auto 10vh}@media only screen and (orientation: landscape){.popup.validate{left:30vw;width:40vw}}.popup.validate .text{padding:5vw}.popup.validate button.cancel{display:block;width:80%;height:5vh;margin:0 auto 5vh}.chat-parent{position:fixed;z-index:200;bottom:3vh;right:3vh;width:calc(100vw - 6vh);height:84vh;background:#fff;border-radius:1.5vh;box-shadow:0 0 30px #000;transition:right .5s ease-in-out;display:grid;grid-template-rows:4vh 60px auto 2.1em;grid-row-gap:.5vh;padding:.5vw}@media only screen and (orientation: landscape){.chat-parent{width:30vw;width:min(33vw,500px)}}.chat-parent .top-bar button.cancel{width:4vh;height:4vh;border-color:#333;background-size:50%}.chat-parent .ad-space{background:blue}.chat-parent .chat-log{overflow:clip scroll;word-wrap:break-word;line-height:110%}.chat-parent .chat-log .chat-msg{padding:.3em}.chat-parent .chat-log .chat-msg>.user{font-weight:bold}.chat-parent .chat-log .chat-msg .msg{margin-top:.15em}.chat-parent .chat-log .chat-msg:nth-child(odd){background:#eee}.chat-parent .chat-send input{width:calc(100% - 1em - .6em);height:calc(100% - .4em - .6em);border:none;outline:none;font-size:2vh;margin:none;padding:.2em .5em;box-shadow:0 0 .5em #000;border-radius:.5em;margin:.3em}.chat-parent.-hidden{display:grid;right:-100vw}@media only screen and (orientation: landscape){.chat-parent.-hidden{right:-35vw}}
 </style>
 	</head>
-	<body class="select-none">
-<div class="panel pos-zoom select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings hidden"></div><div class="panel button about"></div><div class="panel button bot hidden"></div><div class="panel button admin hidden"></div><div class="panel button chat hidden"></div><div class="palette hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas class="place" noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="/resources/select.svg"/></div><canvas class="bot hidden" noselect="noselect"></canvas><div class="popup about"></div></body>
+	<body class="-select-none">
+<div class="panel pos-zoom -select-text"></div><div class="panel status"></div><div class="panel button donate"></div><div class="panel button settings -hidden"></div><div class="panel button about"></div><div class="panel button bot -hidden"></div><div class="panel button admin -hidden"></div><div class="panel button chat -hidden"></div><div class="palette -hidden"><div class="colors"></div><div class="buttons"><div class="spacer"></div><form class="cancel"><button></button></form><form class="submit"><button disabled="disabled"></button></form><div class="spacer"></div></div></div><canvas class="place" noselect="noselect" width="2000" height="2000"></canvas><div class="reticule"><img src="/resources/images/select.svg"/></div><canvas class="bot -hidden" noselect="noselect"></canvas><div class="popup-grayout -hidden"></div><div class="popup about -hidden"></div><div class="popup validate -hidden"><div class="text"></div><button class="cancel"></button></div><div class="chat-parent -hidden"><div class="top-bar"><button class="cancel"></button></div><div class="ad-space"></div><div class="chat-log -select-text"><div class="chat-msg"><div class="user">SuperpoweredIndustry</div><div class="msg">Spicy jalapeno bacon ipsum dolor amet filet mignon drumstick meatball leberkas fatback cow pork belly tail pork venison cupim porchetta picanha andouille. Pork chop landjaeger short ribs ham hock shank tongue boudin shoulder. Meatball tail biltong, sausage pork swine tri-tip drumstick doner hamburger flank pig. Ground round shank swine flank buffalo chicken. Shankle salami turkey pastrami, prosciutto t-bone tri-tip. Jerky ground round cow landjaeger pancetta. Corned beef shankle picanha pork chop venison frankfurter.</div></div><div class="chat-msg"><div class="user">Orange-Square-3659</div><div class="msg">WOW</div><div class="msg">HECK</div><div class="msg">TRON</div></div><div class="chat-msg"><div class="user">jabrils</div><div class="msg">woowowo oow owoowowo</div></div><div class="chat-msg"><div class="user">plant</div><div class="msg">Porchetta strip steak venison cow boudin beef ribs bacon landjaeger chicken. Doner sausage boudin biltong. Leberkas pork belly swine, ground round beef ribs kielbasa alcatra. Kielbasa chislic cow drumstick corned beef bacon, doner turkey shank chicken strip steak. Shank alcatra ribeye pastrami, jowl doner burgdoggen. Cow shoulder cupim doner pork chop, tri-tip ham hock.</div></div><div class="chat-msg"><div class="user">okoknerdokok</div><div class="msg">According to all known laws of aviation, there is no way that a bee should be able to fly.</div><div class="msg">Its wings are too small to get its fat little body off the ground.</div><div class="msg">The bee, of course, flies anyway.</div><div class="msg">Because bees don’t care what humans think is impossible.</div></div><div class="chat-msg"><div class="user">ConcernedApe_4388</div><div class="msg">Doner landjaeger tongue pastrami brisket, ham shank. Doner strip steak pork belly pancetta pastrami filet mignon shankle flank t-bone venison tenderloin chicken boudin. Short loin pastrami pork chop, filet mignon shoulder chuck tail pancetta rump buffalo picanha cupim hamburger. Hamburger ground round bresaola turkey capicola. Ham pork loin doner jerky pork turducken prosciutto.</div></div><div class="chat-msg"><div class="user">excelente</div><div class="msg">this is kinda weird</div><div class="msg">who else reads these</div><div class="msg">helloooooooooo</div><div class="msg">can anyone hear</div><div class="msg">im going to leave cause this place is empty and boringggggg</div></div><div class="chat-msg"><div class="user">murad</div><div class="msg">is this</div><div class="msg">the real life</div><div class="msg">is this just</div></div><div class="chat-msg"><div class="user">oWoWoWo</div><div class="msg">fantasyyyy</div><div class="msg">caught in a</div><div class="msg">landslide</div><div class="msg">no escape from</div><div class="msg">realityyyyyyyyyyyy</div></div></div><form class="chat-send" accept-charset="utf-8"><input type="text" enterkeyhint="send"/></form></div></body>
 </html>

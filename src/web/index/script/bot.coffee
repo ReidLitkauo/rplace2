@@ -23,13 +23,16 @@ l_timeout = null
 #///////////////////////////////////////////////////////////////////////////////
 # Start the bot's main loop
 
-bot_start = () ->
+bot_start = ->
 
 	# Empty bot canvas, but keep the border
 	$('canvas.bot')[0].getContext('2d').clearRect 0, 0, l_w, l_h
 
 	# Show pixel selection reticule
-	$('.reticule').removeClass 'hidden'
+	$('.reticule').removeClass '-hidden'
+
+	# Reset min/max allowable position to allow free roaming
+	g_pos.setMin().setMax()
 
 	# Set position
 	l_x = g_pos.xf - Math.floor l_w / 2
@@ -47,7 +50,7 @@ bot_start = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Bot main loop
 
-bot_loop = () ->
+bot_loop = ->
 
 	# Iterate through image, row by row then pixel by pixel
 	for y in [0 ... l_h] then for x in [0 ... l_w]
@@ -73,7 +76,7 @@ bot_loop = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Stop running the bot and clear all bot-related UI
 
-bot_cancel = () ->
+bot_cancel = ->
 
 	# Cancel bot loop
 	if l_timeout? then window.clearTimeout l_timeout
@@ -91,8 +94,8 @@ bot_cancel = () ->
 	$('canvas.bot').prop('width', 0).prop('height', 0)
 
 	# Hide the bot canvas, re-show pixel placement reticule
-	$('canvas.bot').addClass 'hidden'
-	$('.reticule').removeClass 'hidden'
+	$('canvas.bot').addClass '-hidden'
+	$('.reticule').removeClass '-hidden'
 
 	# Reset min/max position to restore full movement
 	g_pos.setMin().setMax()
@@ -110,7 +113,7 @@ bot_cancel = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Used by admins to insta-place images
 
-bot_place = () ->
+bot_place = ->
 
 	# Retrieve x,y coords for image top-left
 	l_x = g_pos.xf - Math.floor l_w / 2
@@ -125,7 +128,7 @@ bot_place = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Animate bot-placement canvas
 
-bot_animateUI = () ->
+bot_animateUI = ->
 
 	# Grab width and height
 	w = $('canvas.bot').prop 'width'
@@ -267,8 +270,8 @@ $ ->
 			g_pos.setMax BOARD_WIDTH - Math.ceil(img.width / 2) + 1, BOARD_HEIGHT - Math.ceil(img.height / 2) + 1
 
 			# Show canvas, hide pixel placement reticule
-			$('canvas.bot').removeClass 'hidden'
-			$('.reticule').addClass 'hidden'
+			$('canvas.bot').removeClass '-hidden'
+			$('.reticule').addClass '-hidden'
 
 			# Display X over bot
 			$('.panel.button.bot').addClass 'cancel'

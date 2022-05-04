@@ -1,7 +1,6 @@
 # config.example.yaml
-# Go through this file and set the configuration you want, then rename it to config.yaml
-# All empty fields are REQUIRED
-# All non-empty fields are set to their defaults
+# Rename this file to config.yaml
+# and go through the whole thing, setting the config you want.
 
 
 # Credentials for your Redddit app
@@ -43,6 +42,11 @@ account_requirements:
   age_months:  0
   age_days:    7
   min_karma:  20
+
+# Webhooks for sending Discord messages, segregated by language
+# 
+discord_hooks:
+  en: ""
 
 # The maximum age allowed for a nonce (used in the account verification webflow)
 nonce_max_age_hours: 24

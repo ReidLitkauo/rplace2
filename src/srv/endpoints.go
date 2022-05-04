@@ -12,16 +12,10 @@ import (
 	"time"
 )
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Endpoint functions
 
-// List of validate options:
-// servererror
-// redditerror
-// userdenied
-// belowthreshold
-
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Redirect to Reddit to start linking process
 // https://github.com/reddit-archive/reddit/wiki/OAuth2
 
@@ -52,7 +46,7 @@ func EndpointLinkRedditAccount (w http.ResponseWriter, r *http.Request, db *sql.
 
 }
 
-//==============================================================================
+////////////////////////////////////////////////////////////////////////////////
 // Receive redirect from Reddit to complete linking process
 // https://github.com/reddit-archive/reddit/wiki/OAuth2
 
@@ -62,7 +56,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	// Parse query string
 	q := r.URL.Query()
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Grab and check the error
 
 	switch q.Get("error") {
@@ -84,7 +78,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Grab and check the code
 
 	reddit_code := q.Get("code")
@@ -94,7 +88,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Check the state
 
 	// Delete old nonces
@@ -123,10 +117,10 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Grab an access token
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Big long function call to place the request
 
 	resp, err := requests.Post(
@@ -144,7 +138,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		// Pass authorization credentials
 		requests.Auth{ g_cfg.Reddit_creds.Clientid, g_cfg.Reddit_creds.Secret } )
 	
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Run through possible error scenarios
 
 	if resp.R.StatusCode == 401 {
@@ -159,7 +153,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Parse JSON response
 
 	var respjson map[string]interface{}
@@ -172,7 +166,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Run through more error scenarios
 
 	reddit_err, reddit_err_exists := respjson["error"].(string)
@@ -189,7 +183,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Actually grab the freaking code
 
 	reddit_token, reddit_token_exists := respjson["access_token"].(string)
@@ -200,10 +194,10 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Get their Reddit username
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// The big get call
 
 	meresp, err := requests.Get(
@@ -214,7 +208,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		// Pass the OAuth bearer token
 		requests.Header{ "Authorization": "bearer " + reddit_token } )
 	
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Error handling
 
 	if meresp.R.StatusCode != 200 {
@@ -223,7 +217,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Parse JSON response
 
 	var mejson map[string]interface{}
@@ -236,7 +230,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// More error handling
 
 	me_err, me_err_exists := mejson["error"].(string)
@@ -247,7 +241,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// FINALLY get the freaking username
 
 	me, me_exists := mejson["name"]
@@ -258,7 +252,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Check if account already exists in our systems
 
 	var role int
@@ -273,8 +267,11 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Check eligibility requirements
+
+	//--------------------------------------------------------------------------
+	// Does the account meet minimum karma/age requirements?
 
 	// Only execute this step for new users
 	if role == ROLE_ANON {
@@ -304,6 +301,19 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 	}
 
 	//--------------------------------------------------------------------------
+	// Is the account banned?
+
+	if role == ROLE_BANN {
+
+		// TODO delete all sessions for banned user
+
+		// Redirect and tell user they are banned
+		http.Redirect(w, r, "/?validate=userbanned", 303)
+		return
+		
+	}
+
+	//==========================================================================
 	// Create user entry
 
 	// Also only for new users
@@ -318,10 +328,10 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// Establish a session
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Generate a random string
 
 	session := ""
@@ -330,7 +340,7 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		session += strconv.FormatUint(uint64(rand.Uint32()), 16)
 	}
 
-	// - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+	//--------------------------------------------------------------------------
 	// Store association between session and user
 
 	_, err = db.Exec("INSERT INTO sessions (session, username) VALUES (?, ?)", session, me)
@@ -341,13 +351,13 @@ func EndpointRedditRedirect (w http.ResponseWriter, r *http.Request, db *sql.DB)
 		return
 	}
 
-	//--------------------------------------------------------------------------
+	//==========================================================================
 	// USER VERIFIED - SESSION SET - RETURN TO USER
 
 	// Set cookie
 	w.Header().Set("Set-Cookie", "session=" + session + "; Path=/; Max-Age=3155695200")
 
 	// Return the user to the application
-	http.Redirect(w, r, "/", 303)
+	http.Redirect(w, r, "/?validate=success", 303)
 
 }

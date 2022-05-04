@@ -1,7 +1,10 @@
 #=require <globals>
+#=require <text>
 #=require <pos>
 #=require <canvas>
 #=require <status>
 #=require <palette>
+#=require <popup>
+#=require <chat>
 #=require <ws>
 #=require <bot>

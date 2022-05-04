@@ -1,0 +1,42 @@
+ALL FILES NOT INCLUDED IN THIS ATTRIBUTION FILE ARE OF MY OWN CREATION
+AND FALL UNDER THE SAME LICENSE THAT COVERS THE ENTIRE PROJECT
+
+###########
+#= Fonts =#
+###########
+
+/web/resources/fonts/NotoSans*
+SIL Open Font License
+http://scripts.sil.org/OFL
+
+############
+#= Images =#
+############
+
+/web/resources/images/bot.svg
+Derivative work of the following three works:
+https://www.svgrepo.com/svg/279058/robot      - License: CC0
+https://www.svgrepo.com/svg/4029/picture      - License: CC0
+https://www.svgrepo.com/svg/359578/paintbrush - License: Public Domain
+
+/resources/images/question-mark-button-svgrepo-com.svg
+License: CC0
+https://www.svgrepo.com/svg/54007/question-mark-button
+
+/resources/images/chat-svgrepo-com.svg
+Derivative work, original here:
+License: CC0
+https://www.svgrepo.com/svg/9472/chat
+
+/resources/images/gear-svgrepo-com.svg
+License: CC0
+https://www.svgrepo.com/svg/87009/gear
+
+/resources/images/gavel-svgrepo-com.svg
+License: MIT
+https://www.svgrepo.com/svg/350340/gavel
+
+/resources/images/donate-svgrepo-com.svg
+Derivative work, original here:
+License: CC Attrib
+https://www.svgrepo.com/svg/351966/donate

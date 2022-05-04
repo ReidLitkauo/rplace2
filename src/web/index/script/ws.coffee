@@ -129,6 +129,13 @@ ws_send_putImage = (x, y, w, h, ccs) ->
 
 	l_ws.send dv
 
+#===============================================================================
+# Send a chat message
+
+ws_send_chat = (msg) ->
+
+	console.log new TextEncoder().encode msg
+
 ################################################################################
 # Initialization
 
@@ -182,6 +189,13 @@ $ ->
 			switch msgtype
 
 				#---------------------------------------------------------------
+				# User information message
+
+				when MSG_S_USERINFO
+
+					console.log d
+
+				#---------------------------------------------------------------
 				# Board initialization: Unauthenticated user
 
 				when MSG_S_BOARDANON
@@ -198,7 +212,7 @@ $ ->
 					g_role = AUTH
 
 					# Show appropriate buttons
-					$('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass 'hidden'
+					$('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass '-hidden'
 
 					# If we're not rate-limited, allow for pixel placement
 					if status_get() != STATUS_COOLDOWN then status_set STATUS_PLACETILE
@@ -215,7 +229,7 @@ $ ->
 					RATELIMIT_SEC = 0
 
 					# Show appropriate buttons
-					$('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass 'hidden'
+					$('.panel.button.chat, .panel.button.settings, .panel.button.bot, .panel.button.admin').removeClass '-hidden'
 
 					# Set status
 					status_set STATUS_PLACETILE

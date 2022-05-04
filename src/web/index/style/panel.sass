@@ -1,0 +1,122 @@
+//##############################################################################
+// Panels
+
+////////////////////////////////////////////////////////////////////////////////
+// General panel styles
+
+.panel
+	position: fixed
+	z-index: 200
+	background: white
+	box-shadow: 0 0 30px black
+	border-radius: 100vh
+	color: black
+	font-size: 90%
+	text-align: center
+
+////////////////////////////////////////////////////////////////////////////////
+// Position and zoom panel, top center
+
+.panel.pos-zoom
+	font-family: "Noto Sans Mono"
+	font-weight: 700
+	top: 3vh
+	left: 50vw
+	transform: translateX(-50%)
+	padding: 0.25em 1em 0.25em
+	width: 12em
+
+////////////////////////////////////////////////////////////////////////////////
+// Status panel, bottom center
+
+.panel.status
+	font-family: "Noto Sans"
+	font-weight: bold
+	bottom: 3vh
+	left: 50vw
+	transform: translateX(-50%)
+	padding: 0.25em 1em 0.25em
+	width: 10em
+
+	// Styles for cooldnwn appearance
+	.timeleft
+		display: inline-block
+	img.timeleft
+		width: 0.95em
+		height: 0.95em
+		transform: scale(1.5) translate(-20%, 7%)
+
+.panel.status.wide
+	width: 15em
+
+//##############################################################################
+// Panel buttons
+
+.panel.button
+	border-radius: 1.5vh
+	width: 6vh
+	height: 6vh
+	background-repeat: no-repeat
+	background-position: 50% 50%
+
+////////////////////////////////////////////////////////////////////////////////
+// Donate button, top left
+	
+.panel.button.donate
+	top: 3vh
+	left: 3vh
+	background-image: url('/resources/images/donate-svgrepo-com.svg')
+	background-size: 75%
+	background-position: 55% 50%
+
+////////////////////////////////////////////////////////////////////////////////
+// About button, top right
+
+.panel.button.about
+	top: 3vh
+	right: 3vh
+	background-image: url('/resources/images/question-mark-button-svgrepo-com.svg')
+	background-size: 75%
+
+////////////////////////////////////////////////////////////////////////////////
+// Settings button, top right
+
+.panel.button.settings
+	top: 12vh
+	right: 3vh
+	background-image: url('/resources/images/gear-svgrepo-com.svg')
+	background-size: 70%
+	background-position: 50% 55%
+
+////////////////////////////////////////////////////////////////////////////////
+// Bot button, bottom left
+
+.panel.button.bot
+	bottom: 3vh
+	left: 3vh
+	background-image: url('/resources/images/bot.svg')
+	background-size: 80%
+	background-position: 55% 55%
+
+.panel.button.bot.cancel
+	background-image: url('/resources/images/cancel.svg')
+	background-size: 60%
+
+////////////////////////////////////////////////////////////////////////////////
+// Admin button, bottom left
+
+.panel.button.admin
+	bottom: 12vh
+	left: 3vh
+	transform: scaleX(-1)
+	background-image: url('/resources/images/gavel-svgrepo-com.svg')
+	background-size: 80%
+
+////////////////////////////////////////////////////////////////////////////////
+// Chat button, bottom right
+
+.panel.button.chat
+	bottom: 3vh
+	right: 3vh
+	background-image: url('/resources/images/chat-svgrepo-com.svg')
+	background-size: 80%

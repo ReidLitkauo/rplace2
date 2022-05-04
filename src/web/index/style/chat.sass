@@ -1,0 +1,68 @@
+.chat-parent
+	position: fixed
+	z-index: 200
+	bottom: 3vh
+	right: 3vh
+	width: calc(100vw - 6vh)
+	height: 84vh
+	background: white
+	border-radius: 1.5vh
+	box-shadow: 0 0 30px black
+	transition: right 0.5s ease-in-out
+	display: grid
+	grid-template-rows: 4vh 60px auto 2.1em
+	grid-row-gap: 0.5vh
+	padding: 0.5vw
+
+	@media only screen and (orientation: landscape)
+		width: 30vw
+		width: min(33vw, 500px)
+
+	.top-bar
+
+		button.cancel
+			width: 4vh
+			height: 4vh
+			border-color: #333
+			background-size: 50%
+	
+	.ad-space
+		background: blue
+	
+	.chat-log
+		overflow: clip scroll
+		word-wrap: break-word
+		line-height: 110%
+
+		.chat-msg
+			padding: 0.3em
+
+			>.user
+				font-weight: bold
+			
+			.msg
+				margin-top: 0.15em
+		
+		.chat-msg:nth-child(odd)
+			background: #EEE
+	
+	.chat-send
+
+		input
+			width: calc(100% - 1.0em - 0.6em)
+			height: calc(100% - 0.4em - 0.6em)
+			border: none
+			outline: none
+			font-size: 2vh
+			margin: none
+			padding: 0.2em 0.5em
+			box-shadow: 0 0 .5em black
+			border-radius: 0.5em
+			margin: 0.3em
+
+.chat-parent.-hidden
+	display: grid
+	right: -100vw
+
+	@media only screen and (orientation: landscape)
+		right: -35vw

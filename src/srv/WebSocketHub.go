@@ -11,6 +11,7 @@ import (
 	"os"
 	"strconv"
 	"github.com/rs/zerolog/log"
+	"encoding/json"
 )
 
 //##############################################################################
@@ -125,22 +126,60 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 	//==========================================================================
 	// Prepare board message
 
-	// Map role to message type
-	msgboardtype := MSG_S_BOARDANON
-	switch role {
-		case ROLE_ADMN: msgboardtype = MSG_S_BOARDADMN
-		case ROLE_AUTH: msgboardtype = MSG_S_BOARDAUTH
-		case ROLE_BANN: msgboardtype = MSG_S_BOARDBANN
+	// New scopes are nice, glad all curly braces establish new scopes
+	{
+
+		// Map role to message type
+		msg_type := MSG_S_BOARDANON // Default
+		switch role {
+			case ROLE_ADMN: msg_type = MSG_S_BOARDADMN
+			case ROLE_AUTH: msg_type = MSG_S_BOARDAUTH
+			case ROLE_BANN: msg_type = MSG_S_BOARDBANN
+		}
+
+		// Prepend the correct message type to the stored board
+		msg_raw := append( []byte{ byte(msg_type) }, this.board... )
+
+		// Use it to generate a new prepared message
+		msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
+		if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
+
+		// Add to the list
+		ret = append(ret, msg_prep)
+
 	}
 
-	// Prepend the correct message type to the stored board
-	msgboardraw := append( []byte{ byte(msgboardtype) }, this.board... )
+	//==========================================================================
+	// Prepare optional user settings message
 
-	// Use it to generate a new prepared message
-	msgboardprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgboardraw )
-	if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
+	// Only for logged-in users!
+	if role == ROLE_ADMN || role == ROLE_AUTH {
 
-	ret = append(ret, msgboardprep)
+		// Message structure
+		type msg_settings struct {
+			Username string `json:"user"`
+			Role     int    `json:"role"`
+		}
+
+		// Create a new filled-out structure
+		msg_struct := msg_settings{username, role}
+
+		// Convert to JSON
+		// No errors should be emitted by this function...
+		// We are not marshaling any unsupported types or invalid values.
+		msg_json, _ := json.Marshal(msg_struct)
+
+		// Prepend message type to the JSON
+		msg_raw := append( []byte{MSG_S_USERINFO}, msg_json... )
+
+		// Create prepared message
+		msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
+		if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
+
+		// Done with this message
+		ret = append(ret, msg_prep)
+
+	}
 
 	//==========================================================================
 	// Prepare optional rate-limit message
@@ -149,28 +188,28 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 	cooldown := this.tsplaced[username] + g_cfg.Pixel_rate_sec - time.Now().Unix()
 
 	// If the user is authenitcated, and the user can't place a pixel quite yet
-	if username != "" && cooldown > 0 {
+	if role == ROLE_AUTH && cooldown > 0 {
 
 		// Create raw message
-		msgrateraw := make([]byte, 5)
+		msg_raw := make([]byte, 5)
 
 		// Set message type
-		msgrateraw[0] = MSG_S_COOLDOWN
+		msg_raw[0] = MSG_S_COOLDOWN
 
 		// Write cooldown into message
-		binary.BigEndian.PutUint32( msgrateraw[1:5], uint32(cooldown) )
+		binary.BigEndian.PutUint32( msg_raw[1:5], uint32(cooldown) )
 
 		// Generate new prepared message
-		msgrateprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgrateraw )
+		msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
 		if err != nil { log.Error().Err(err).Msg("Unable to generate initialization WS message") }
 	
 		// Send out with other messages
-		ret = append(ret, msgrateprep)
+		ret = append(ret, msg_prep)
 
 	}
 
 	//==========================================================================
-	// Send out init messages
+	// All init messages are prepared
 
 	return ret
 

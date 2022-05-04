@@ -1,0 +1,72 @@
+//##############################################################################
+// Background
+
+.popup-grayout
+	position: fixed
+	z-index: 1000
+	top: 0
+	left: 0
+	bottom: 0
+	right: 0
+	width: 100vw
+	height: 100vh
+	background-color: #888888AA
+	//backdrop-filter: blur(5px) grayscale(0.2)
+	transition: opacity 0.5s ease-in-out
+
+.popup-grayout.-hidden
+	display: block
+	opacity: 0
+	pointer-events: none
+
+//##############################################################################
+// General styles
+
+.popup
+	position: fixed
+	z-index: 1001
+	top: 20vh
+	height: 60vh
+	left: 10vw
+	width: 80vw
+	background: white
+	border-radius: 5vh
+	transition: top 0.5s cubic-bezier(.68,-0.55,.27,1.55)
+
+	@media only screen and (orientation: landscape)
+		left: 30vw
+		width: 40vw
+
+.popup.-hidden
+	display: block
+	top: 120vh !important // TODO this is needed to override other styles, fix?
+
+//##############################################################################
+// About
+
+.popup.about
+
+//##############################################################################
+// Validate
+// Shown to users who are landing from the account validation webflow
+
+.popup.validate
+	top: 25vh
+	height: 50vh
+	left: 20vw
+	width: 60vw
+	display: grid
+	grid-template-rows: auto 10vh
+
+	@media only screen and (orientation: landscape)
+		left: 30vw
+		width: 40vw
+
+	.text
+		padding: 5vw
+
+	button.cancel
+		display: block
+		width: 80%
+		height: 5vh
+		margin: 0 auto 5vh

@@ -1,0 +1,70 @@
+//##############################################################################
+// Main canvas
+	
+canvas.place
+	position: fixed
+	z-index: 0
+
+	// This is VERY important for the transforms to apply properly.
+	transform-origin: top left
+
+	// Establish a default size
+	// This is all kinda arbitrary, so I'm doing what I found was closest to
+	// rplace.tk, which is these dimensions being 0.01x zoom.
+	width: 500vmin
+	height: 500vmin
+
+	// Establish a default position, top-left corner of canvas in center
+	top: 50vh
+	left: 50vw
+
+	// Disable anti-aliasing
+	image-rendering: pixelated
+	image-rendering: crisp-edges
+
+	// Add an outline
+	// NOTE This fixes a WEIRD bug that would cause the canvas to smear
+	// all over the body like the bouncing cards from Solitaire
+	// WHY DOES THIS FIX THAT BUG :(
+	outline: 1px solid #181818
+
+canvas.place.smooth-animation
+	transition: transform 0.5s ease-out
+
+//##############################################################################
+// Canvas UI elements
+
+////////////////////////////////////////////////////////////////////////////////
+// Pixel targeting reticule
+
+.reticule
+	position: fixed
+	z-index: 1
+	pointer-events: none
+	// Positioning is handled by scripts
+
+	// The reticule is designed to fit exactly over a pixel.
+	// Expand the image so the reticule itself wraps around the pixel nicely.
+	img
+		position: absolute
+		top: 0
+		left: 0
+		width: 100%
+		height: 100%
+		transform: scale( calc(24/20) * 100% )
+
+////////////////////////////////////////////////////////////////////////////////
+// Bot image-placement canvas
+
+canvas.bot
+	position: fixed
+	z-index: 1
+	pointer-events: none
+	// Positioning is handled by scripts
+
+	// Disable anti-aliasing
+	image-rendering: pixelated
+	image-rendering: crisp-edges
+
+	outline: 3px solid #333
+	border:  3px solid #CCC

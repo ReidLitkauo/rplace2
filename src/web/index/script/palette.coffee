@@ -4,7 +4,7 @@
 #///////////////////////////////////////////////////////////////////////////////
 # Clean and hide the palette UI
 
-palette_clearUI = () ->
+palette_clearUI = ->
 
 	# Disable submit button
 	$('.palette form.submit button').attr('disabled', 'disabled')
@@ -16,7 +16,7 @@ palette_clearUI = () ->
 	$('.reticule').css 'background-color', "transparent"
 
 	# And hide the UI
-	$('.palette').addClass('hidden')
+	$('.palette').addClass('-hidden')
 
 ################################################################################
 # Initialization

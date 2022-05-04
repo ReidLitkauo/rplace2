@@ -56,7 +56,7 @@ for fullroot, directories, filenames in os.walk(in_dir):
 	# This makes it easier to move files around later on
 	root = fullroot[len(in_dir):]
 
-	# Skip empty directories and include directories within endpoints
+	# Skip empty directories and skip include directories within endpoints
 	if not root: continue
 	if root.endswith('/' + inc_script_dir): continue
 	if root.endswith('/' + inc_style_dir):  continue

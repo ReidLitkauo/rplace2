@@ -1,38 +1,38 @@
--///////////////////////////////////////////////////////////////////////////////
--// Panels
+//-#############################################################################
+//- Panels
 
--//=============================================================================
--// Center
+//-/////////////////////////////////////////////////////////////////////////////
+//- Center
 
-.panel.pos-zoom.select-text
+.panel.pos-zoom.-select-text
 .panel.status
 
--//=============================================================================
--// Top left
+//-/////////////////////////////////////////////////////////////////////////////
+//- Top left
 
 .panel.button.donate
 
--//=============================================================================
--// Top right
+//-/////////////////////////////////////////////////////////////////////////////
+//- Top right
 
-.panel.button.settings.hidden
+.panel.button.settings.-hidden
 .panel.button.about
 
--//=============================================================================
--// Bottom left
+//-/////////////////////////////////////////////////////////////////////////////
+//- Bottom left
 
-.panel.button.bot.hidden
-.panel.button.admin.hidden
+.panel.button.bot.-hidden
+.panel.button.admin.-hidden
 
--//=============================================================================
--// Bottom right
+//-/////////////////////////////////////////////////////////////////////////////
+//- Bottom right
 
-.panel.button.chat.hidden
+.panel.button.chat.-hidden
 
--///////////////////////////////////////////////////////////////////////////////
--// Palette
+//-#############################################################################
+//- Palette
 
-.palette.hidden
+.palette.-hidden
 	.colors
 	.buttons
 		.spacer
@@ -42,16 +42,82 @@
 			button(disabled="disabled")
 		.spacer
 
--///////////////////////////////////////////////////////////////////////////////
--// Canvas
+//-#############################################################################
+//- Canvas
 
 canvas.place(noselect width=2000 height=2000)
 .reticule
-	img(src='/resources/select.svg')
-canvas.bot.hidden(noselect)
+	img(src='/resources/images/select.svg')
+canvas.bot.-hidden(noselect)
 
--///////////////////////////////////////////////////////////////////////////////
--// Popups
+//-#############################################################################
+//- Popups
 
-.popup.about
+.popup-grayout.-hidden
 
+
+.popup.about.-hidden
+
+//-/////////////////////////////////////////////////////////////////////////////
+//- Account validation (landing from validation webflow)
+
+.popup.validate.-hidden
+	.text
+	button.cancel
+
+//-#############################################################################
+//- Chat
+
+.chat-parent.-hidden
+
+	.top-bar
+		button.cancel
+	
+	.ad-space
+
+	.chat-log.-select-text
+		.chat-msg
+			.user SuperpoweredIndustry
+			.msg Spicy jalapeno bacon ipsum dolor amet filet mignon drumstick meatball leberkas fatback cow pork belly tail pork venison cupim porchetta picanha andouille. Pork chop landjaeger short ribs ham hock shank tongue boudin shoulder. Meatball tail biltong, sausage pork swine tri-tip drumstick doner hamburger flank pig. Ground round shank swine flank buffalo chicken. Shankle salami turkey pastrami, prosciutto t-bone tri-tip. Jerky ground round cow landjaeger pancetta. Corned beef shankle picanha pork chop venison frankfurter.
+		.chat-msg
+			.user Orange-Square-3659
+			.msg WOW
+			.msg HECK
+			.msg TRON
+		.chat-msg
+			.user jabrils
+			.msg woowowo oow owoowowo
+		.chat-msg
+			.user plant
+			.msg Porchetta strip steak venison cow boudin beef ribs bacon landjaeger chicken. Doner sausage boudin biltong. Leberkas pork belly swine, ground round beef ribs kielbasa alcatra. Kielbasa chislic cow drumstick corned beef bacon, doner turkey shank chicken strip steak. Shank alcatra ribeye pastrami, jowl doner burgdoggen. Cow shoulder cupim doner pork chop, tri-tip ham hock.
+		.chat-msg
+			.user okoknerdokok
+			.msg According to all known laws of aviation, there is no way that a bee should be able to fly.
+			.msg Its wings are too small to get its fat little body off the ground.
+			.msg The bee, of course, flies anyway.
+			.msg Because bees don’t care what humans think is impossible.
+		.chat-msg
+			.user ConcernedApe_4388
+			.msg Doner landjaeger tongue pastrami brisket, ham shank. Doner strip steak pork belly pancetta pastrami filet mignon shankle flank t-bone venison tenderloin chicken boudin. Short loin pastrami pork chop, filet mignon shoulder chuck tail pancetta rump buffalo picanha cupim hamburger. Hamburger ground round bresaola turkey capicola. Ham pork loin doner jerky pork turducken prosciutto.
+		.chat-msg
+			.user excelente
+			.msg this is kinda weird
+			.msg who else reads these
+			.msg helloooooooooo
+			.msg can anyone hear
+			.msg im going to leave cause this place is empty and boringggggg
+		.chat-msg
+			.user murad
+			.msg is this
+			.msg the real life
+			.msg is this just
+		.chat-msg
+			.user oWoWoWo
+			.msg fantasyyyy
+			.msg caught in a
+			.msg landslide
+			.msg no escape from
+			.msg realityyyyyyyyyyyy
+
+	form.chat-send(accept-charset="utf-8")
+		input(type="text" enterkeyhint="send")

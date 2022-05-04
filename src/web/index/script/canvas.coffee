@@ -13,6 +13,21 @@ anchorMY = null
 # Helper functions
 
 #///////////////////////////////////////////////////////////////////////////////
+# Determine if we should skip this mouse event
+# Necessary since all events are attached to the BODY
+
+canvas_shouldSkipMouseEvent = (e) ->
+
+	# A popup is open, let that take precedence
+	if $('.popup:not(.-hidden)').length then return true
+
+	# Source is the chat box, don't bother with that
+	if $(e.target).add($(e.target).parents()).is('.chat-parent') then return true
+
+	# Passed all checks, continue
+	false
+
+#///////////////////////////////////////////////////////////////////////////////
 # Get raw transformation values
 # txp, typ: transform along x/y as percentage
 # sf: scale factor
@@ -81,7 +96,7 @@ canvas_getMouseFromXY = (x, y) ->
 # Transform the canvas to reflect being positioned
 # at the given X,Y coord with the given zoom.
 
-canvas_applyPos = () ->
+canvas_applyPos = ->
 
 	#===========================================================================
 	# Move the canvas parent to the correct spot
@@ -108,7 +123,7 @@ canvas_applyPos = () ->
 #///////////////////////////////////////////////////////////////////////////////
 # Animate the pixel selection reticule and other canvas-bound UI elements
 
-canvas_animateUI = () ->
+canvas_animateUI = ->
 
 	#===========================================================================
 	# Pixel selection reticule
@@ -155,8 +170,7 @@ $ ->
 
 	$('body').on 'mousedown', (e) ->
 
-		# Do not establish an anchor point if clicking on UI elements
-		if $(e.target).is('.palette, .panel') || $(e.target).parents().is('.palette, .panel')
+		if canvas_shouldSkipMouseEvent(e) or $(e.target).add($(e.target).parents()).is('.palette, .panel')
 			anchorX = null
 			anchorY = null
 			anchorMX = null
@@ -177,12 +191,18 @@ $ ->
 	# Mouseup: Re-apply animation smoothing
 
 	$('body').on 'mouseup', (e) ->
+
+		#if canvas_shouldSkipMouseEvent(e) then return
+
+		# Re-apply animation smoothing
 		$('canvas.place').addClass 'smooth-animation'
 	
 	#===========================================================================
 	# Click: Open pallete and set coords
 
 	$('body').on 'click', (e) ->
+
+		if canvas_shouldSkipMouseEvent(e) then return
 
 		# Only applies if click's mousedown coords were same as mouseup coords
 		if e.originalEvent.x == anchorMX and e.originalEvent.y == anchorMY
@@ -197,13 +217,15 @@ $ ->
 
 				# Also show the palette if we can
 				if status_get() == 'placetile'
-					$('.palette').removeClass('hidden')
+					$('.palette').removeClass('-hidden')
 
 	#===========================================================================
 	# Mousemove: Move canvas using anchor as reference
 
 	$('body').on 'mousemove', (e) ->
 	
+		#if canvas_shouldSkipMouseEvent(e) then return
+
 		# Only move if a mouse button is pressed and anchor was set
 		if e.buttons and anchorX != null
 
@@ -228,6 +250,8 @@ $ ->
 	# Process scroll wheel
 	
 	$('body').on 'wheel', (e) ->
+
+		if canvas_shouldSkipMouseEvent(e) then return
 
 		# Determine zoom level to add from event
 		zl_add = 0
