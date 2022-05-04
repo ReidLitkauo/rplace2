@@ -15,7 +15,7 @@
   // Websocket message types
 
   // Server messages
-  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_COOLDOWN, MSG_S_UPDATE, MSG_S_USERINFO, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, canvas_shouldSkipMouseEvent, chat_close, chat_open, g_board, g_cooldown, g_pos, g_role, g_text, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, popup_close, popup_open, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_chat, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
+  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_CHAT, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_CHAT, MSG_S_COOLDOWN, MSG_S_UPDATE, MSG_S_USERINFO, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, canvas_shouldSkipMouseEvent, chat_close, chat_open, g_board, g_cooldown, g_pos, g_role, g_text, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, popup_close, popup_open, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_chat, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
 
   MSG_S_USERINFO = 0x10;
 
@@ -31,10 +31,14 @@
 
   MSG_S_COOLDOWN = 0x40;
 
+  MSG_S_CHAT = 0x50;
+
   // Client messages
   MSG_C_PLACE = 0xA0;
 
   MSG_C_IMAGE = 0xA1;
+
+  MSG_C_CHAT = 0xB0;
 
   /////////////////////////////////////////////////////////////////////////////////
   // User roles
@@ -1127,7 +1131,33 @@
   //===============================================================================
   // Send a chat message
   ws_send_chat = function(msg) {
-    return console.log(new TextEncoder().encode(msg));
+    var ab, dv, msg_encoded, ua;
+    //-----------------------------------------------------------------------
+    // Initialization
+
+    // Convert the message to a byte array
+    // Gotta do this first to know how long the message ought to be
+    // TextEncoder defaults to UTF8
+    msg_encoded = new TextEncoder().encode(msg);
+    // Create final message
+    ab = new ArrayBuffer(3 + msg_encoded.length);
+    dv = new DataView(ab);
+    ua = new Uint8Array(ab);
+    //-----------------------------------------------------------------------
+    // Header
+
+    // Message type
+    dv.setUint8(0, MSG_C_CHAT);
+    // Message language
+    ua.set(new TextEncoder().encode('en'), 1);
+    //-----------------------------------------------------------------------
+    // Payload
+
+    // Set message payload as the encoded message we made earlier
+    ua.set(msg_encoded, 3);
+    //-----------------------------------------------------------------------
+    // Send
+    return l_ws.send(dv);
   };
 
   //###############################################################################
@@ -1177,6 +1207,7 @@
           //---------------------------------------------------------------
           // User information message
           case MSG_S_USERINFO:
+            // TODO set appropriate fields in settings
             console.log(d);
             break;
           //---------------------------------------------------------------
@@ -1217,6 +1248,12 @@
             g_role = BANN;
             // Tell the user they suk
             status_set(STATUS_BANNED);
+            break;
+          
+            //---------------------------------------------------------------
+          // Chat message
+          case MSG_S_CHAT:
+            console.log(d);
             break;
           
             //---------------------------------------------------------------

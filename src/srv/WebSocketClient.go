@@ -127,7 +127,7 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	// Only allow the specified origin, to prevent attacks
 	// NOTE also fixes some weird bug when I was setting up NGINX as a reverse proxy
 	upgrader.CheckOrigin = func (r *http.Request) bool {
-		return r.Header["Origin"][0] == g_cfg.Serve_origin
+		return r.Header["Origin"][0] == g_cfg.Serve.Origin
 	}
 
 	// Perform the upgrade

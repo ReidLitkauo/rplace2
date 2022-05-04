@@ -18,10 +18,13 @@ MSG_S_UPDATE    = 0x30
 
 MSG_S_COOLDOWN  = 0x40
 
+MSG_S_CHAT      = 0x50
+
 # Client messages
 
 MSG_C_PLACE     = 0xA0
 MSG_C_IMAGE     = 0xA1
+MSG_C_CHAT      = 0xB0
 
 #///////////////////////////////////////////////////////////////////////////////
 # User roles

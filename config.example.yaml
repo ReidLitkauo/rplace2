@@ -1,55 +1,108 @@
+################################################################################
 # config.example.yaml
-# Rename this file to config.yaml
-# and go through the whole thing, setting the config you want.
+# Rename this file to config.yaml and go through the whole thing,
+# filling in all REQUIRED fields and setting other configs as you please
 
-
+################################################################################
 # Credentials for your Redddit app
+
 # These can be found by accessing this URL from a developer's account:
 # https://reddit.com/prefs/apps
+
 reddit_creds:
-  clientid: ""
-  secret:   ""
-  redirect: ""
+  clientid: "" # REQUIRED
+  secret:   "" # REQUIRED
+  redirect: "" # REQUIRED
 
-# The directory all public files are served from
-serve_from: "web"
+################################################################################
+# Configuration for serving files
 
-# The port to serve from
-serve_port: 80
+serve:
 
-# The accepted value for your Origin header
-# In most cases, this should be the address your site is visible from,
-# including subdomain, http/https, and port number
-# For example: "https://place.example.com:8090" or "https://example.com"
-serve_origin: ""
+  #/////////////////////////////////////////////////////////////////////////////
+  # The directory that static files ought to be served from
 
+  dir: "web"
+
+  #/////////////////////////////////////////////////////////////////////////////
+  # The port to serve from
+
+  port: 80
+
+  #/////////////////////////////////////////////////////////////////////////////
+  # The accepted value for your Origin header
+
+  # In most cases, this should be the address your site is visible from,
+  # including subdomain, http/https, and port number
+  # For example: "https://place.example.com:8090" or "https://example.com"
+
+  origin: "" # REQUIRED
+
+################################################################################
 # Board dimensions and palette size
+
 board:
   width:  2000
   height: 2000
   colors:   32
 
-# How frequently each application loop's tick will be run. For example:
+################################################################################
+# How frequently each application loop's tick will be run.
+
+# For example:
 # 1000 means run once every 1000ms or 1 second
 # 200 means run once every 200ms or five times a second
+
 timers:
   update_ms: 250
   backup_ms: 300000
 
+################################################################################
 # Requirements an account must meet to pass validation and be allowed to place
+
 account_requirements:
   age_years:   0
   age_months:  0
   age_days:    7
   min_karma:  20
 
-# Webhooks for sending Discord messages, segregated by language
-# 
-discord_hooks:
-  en: ""
+################################################################################
+# Supported language codes
 
+langs:
+  - "en"
+
+################################################################################
+# Chat message settings
+
+chat:
+
+  #/////////////////////////////////////////////////////////////////////////////
+  # Message history log
+  # Kept in memory and sent out to new connections
+  # so they have context for the ongoing conversation
+  history: 16
+
+################################################################################
+# Webhooks for sending Discord messages, segregated by language
+
+# Need one for each supported language, they can be the same if you want to
+# mix languages in one channel.
+# URLs should be listed in the same order that they're put in langs above.
+# So if you have English listed as the first language,
+# put English's Discord webhook first here.
+# Empty strings will simply be ignored.
+
+discord_hooks:
+  - ""
+
+################################################################################
 # The maximum age allowed for a nonce (used in the account verification webflow)
+
 nonce_max_age_hours: 24
 
+################################################################################
 # Default minimum amount of time between pixel placements allowed
+
 pixel_rate_sec: 10
+

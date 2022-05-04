@@ -63,13 +63,13 @@ func main () {
 	//==========================================================================
 	// Static stuff
 
-	http.Handle("/", http.FileServer(http.Dir(g_cfg.Serve_from)))
+	http.Handle("/", http.FileServer(http.Dir(g_cfg.Serve.Dir)))
 
 	//==========================================================================
 	// Generic stuff
 
-	log.Info().Msg("Ready to listen and serve on port " + strconv.Itoa(g_cfg.Serve_port))
-	err := http.ListenAndServe(":" + strconv.Itoa(g_cfg.Serve_port), nil)
+	log.Info().Msg("Ready to listen and serve on port " + strconv.Itoa(g_cfg.Serve.Port))
+	err := http.ListenAndServe(":" + strconv.Itoa(g_cfg.Serve.Port), nil)
 	if err != nil { log.Error().Err(err).Msg("HTTP LISTEN/SERVE") }
 
 }

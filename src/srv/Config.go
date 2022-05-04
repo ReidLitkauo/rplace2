@@ -5,7 +5,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Struct definition
 
 type Config struct {
@@ -16,11 +16,11 @@ type Config struct {
 		Redirect string `fig:"redirect" validate:"required"`
 	}
 
-	Serve_from   string `fig:"serve_from" default:"web"`
-
-	Serve_port   int    `fig:"serve_port" default:80`
-
-	Serve_origin string `fig:"serve_origin" validate:"required"`
+	Serve struct {
+		Dir    string `fig:"dir"    default:"web"`
+		Port   int    `fig:"port"   default:80`
+		Origin string `fig:"origin" validate:"required"`
+	}
 
 	Board struct {
 		Width  uint16 `fig:"width"  default:2000`
@@ -40,14 +40,25 @@ type Config struct {
 		Min_karma  int `fig:"min_karma"  default:20`
 	}
 
+	Chat struct {
+		History int `fig:"history" default:16`
+	}
+
+	Langs []string `fig:"langs" default:['en']`
+
+	Discord_hooks []string `fig:"discord_hooks" default:['']`
+
 	Nonce_max_age_hours int `fig:"nonce_max_age_hours" default:24`
 
 	Pixel_rate_sec int64 `fig:pixel_rate_sec default:10`
 
 }
 
-////////////////////////////////////////////////////////////////////////////////
+//##############################################################################
 // Public methods
+
+////////////////////////////////////////////////////////////////////////////////
+// Constructor
 
 func NewConfig () *Config {
 
@@ -62,3 +73,4 @@ func NewConfig () *Config {
 	return &cfg
 
 }
+

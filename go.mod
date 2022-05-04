@@ -8,6 +8,7 @@ require (
 	github.com/kkyr/fig v0.3.0
 	github.com/mattn/go-sqlite3 v1.14.12
 	github.com/rs/zerolog v1.26.1
+	golang.org/x/exp v0.0.0-20220428152302-39d4317da171
 )
 
 require (

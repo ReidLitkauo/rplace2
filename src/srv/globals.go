@@ -41,11 +41,14 @@ const (
 
 	MSG_S_COOLDOWN  = 0x40
 
+	MSG_S_CHAT      = 0x50
+
 	// Client message types
 
 	MSG_C_PLACE = 0xA0
 	MSG_C_IMAGE = 0xA1
-	//MSG_C_RECT  = 0xA1
+
+	MSG_C_CHAT  = 0xB0
 
 )
 

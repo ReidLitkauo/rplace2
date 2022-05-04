@@ -134,7 +134,38 @@ ws_send_putImage = (x, y, w, h, ccs) ->
 
 ws_send_chat = (msg) ->
 
-	console.log new TextEncoder().encode msg
+	#-----------------------------------------------------------------------
+	# Initialization
+
+	# Convert the message to a byte array
+	# Gotta do this first to know how long the message ought to be
+	# TextEncoder defaults to UTF8
+	msg_encoded = new TextEncoder().encode msg
+
+	# Create final message
+	ab = new ArrayBuffer 3 + msg_encoded.length
+	dv = new DataView ab
+	ua = new Uint8Array ab
+
+	#-----------------------------------------------------------------------
+	# Header
+
+	# Message type
+	dv.setUint8 0, MSG_C_CHAT
+
+	# Message language
+	ua.set new TextEncoder().encode('en'), 1
+
+	#-----------------------------------------------------------------------
+	# Payload
+
+	# Set message payload as the encoded message we made earlier
+	ua.set msg_encoded, 3
+
+	#-----------------------------------------------------------------------
+	# Send
+
+	l_ws.send dv
 
 ################################################################################
 # Initialization
@@ -193,6 +224,7 @@ $ ->
 
 				when MSG_S_USERINFO
 
+					# TODO set appropriate fields in settings
 					console.log d
 
 				#---------------------------------------------------------------
@@ -244,6 +276,13 @@ $ ->
 
 					# Tell the user they suk
 					status_set STATUS_BANNED
+				
+				#---------------------------------------------------------------
+				# Chat message
+
+				when MSG_S_CHAT
+					console.log d
+					# TODO function q (varr) { return JSON.parse(new TextDecoder().decode(new Uint8Array(varr.buffer).slice(1))) }
 				
 				#---------------------------------------------------------------
 				# Board update

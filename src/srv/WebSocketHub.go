@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"github.com/rs/zerolog/log"
 	"encoding/json"
+	"golang.org/x/exp/slices"
+	"math"
 )
 
 //##############################################################################
@@ -42,6 +44,18 @@ type WebSocketHub struct {
 	// uint16 height
 	// then raw color code data
 	placedImages chan []byte
+
+	// Chat messages sent by users
+	placedChats chan *ChatMessage
+
+	// History of sent chats
+	// Oldest is at position 0 / Newest is at the end
+	chatHistory []*ChatMessage
+
+	// List of chats to send out to clients
+	// Only done once per update cycle
+	// Oldest is at position 0 / Newest is at the end
+	chatsToSend []*ChatMessage
 
 	// Current board
 	board []byte
@@ -77,6 +91,9 @@ func NewWebSocketHub () *WebSocketHub {
 		dereg: make(chan *WebSocketClient),
 		placedPixels: make(chan uint32),
 		placedImages: make(chan []byte),
+		placedChats: make(chan *ChatMessage),
+		chatHistory: make([]*ChatMessage, 0),
+		chatsToSend: make([]*ChatMessage, 0),
 		board: make([]byte, (uint32)(g_cfg.Board.Width) * (uint32)(g_cfg.Board.Height)),
 		changes: make(map[uint32]byte),
 		tsplaced: make(map[string]int64),
@@ -244,6 +261,47 @@ func (this *WebSocketHub) RequestAcceptMessage (c *WebSocketClient, msg []byte) 
 	switch msgtype {
 
 		//======================================================================
+		// Chat message
+
+		case MSG_C_CHAT:
+
+			//------------------------------------------------------------------
+			// Pre-processing
+
+			// Extract message language code
+			lang := string(msg[1:3])
+
+			// Extract payload of UTF8-encoded bytes and convert to string
+			str := string(msg[3:])
+
+			//------------------------------------------------------------------
+			// Rejection scenarios
+
+			// Reject all from anon and banned users
+			if c.Role == ROLE_ANON || c.Role == ROLE_BANN { return false }
+
+			// Reject all messages of unknown language
+			// TODO Uses the experimental package "golang.org/x/exp/slices"
+			if !slices.Contains(g_cfg.Langs, lang) { return false }
+
+			//------------------------------------------------------------------
+			// Processing
+
+			// Create chat message struct
+			chat := NewChatMessage( str, lang, c.Username, c.Role )
+
+			//------------------------------------------------------------------
+			// Approval
+
+			// Queue message to be sent to clients
+			this.placedChats <- chat
+
+			// TODO Send message to appropriate Discord webhook
+			//g_dwm.SendMessage(chat)
+
+			return true
+
+		//======================================================================
 		// Pixel placement
 
 		case MSG_C_PLACE:
@@ -333,12 +391,15 @@ func (this *WebSocketHub) run () {
 		//======================================================================
 		// Process ticker messages
 
-		// Send out board changes since last send tick to all clients
+		// Send out board and chat changes since last send tick to all clients
 		case <- this.tickerUpdate.C:
-			this.processUpdate()
+			this.processChatUpdate()
+			this.processBoardUpdate()
+		
+		// Make backup of the board (send out updates first)
 		case <- this.tickerBackup.C:
-			this.processUpdate()
-			this.processBackup()
+			this.processBoardUpdate()
+			this.processBoardBackup()
 
 		//======================================================================
 		// Process registration-related requests
@@ -347,6 +408,31 @@ func (this *WebSocketHub) run () {
 			this.register(c)
 		case c := <- this.dereg:
 			this.deregister(c)
+		
+		//======================================================================
+		// Process chat messages
+
+		case msg := <- this.placedChats:
+
+			//------------------------------------------------------------------
+			// Manage chat history queue
+
+			// Determine how many messages we're going to leave behind
+			// If the chat history is full, only trim off the one oldest msg
+			// If it's over capacity somehow, trim off more than that
+			// Do nothing if it's not full -- pass 0 index to slice later
+			deadmsgct := (int)(math.Max(0, (float64)(len(this.chatHistory) - g_cfg.Chat.History + 1)))
+
+			// Re-create the history queue
+			// Start with oldest messages, append new message to the end
+			// If the chat history is full or overfull,
+			// leave behind oldest chat messages
+			this.chatHistory = append(this.chatHistory[deadmsgct:], msg)
+
+			//------------------------------------------------------------------
+			// Append to messages we need to send out
+
+			this.chatsToSend = append(this.chatsToSend, msg)
 		
 		//======================================================================
 		// Process pixel placement
@@ -424,9 +510,47 @@ func (this *WebSocketHub) run () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Update clients with new chat messages
+
+func (this *WebSocketHub) processChatUpdate () {
+
+	//==========================================================================
+	// Initialization
+
+	// Don't send anything if no chats sent
+	if len(this.chatsToSend) == 0 { return }
+
+	//==========================================================================
+	// Processing
+
+	// Generate JSON from stored chats
+	chats_json, err := json.Marshal(this.chatsToSend)
+
+	// Create final byte array to send out
+	// Set message type and insert payload
+	msgraw := append( []byte{MSG_S_CHAT}, chats_json... )
+
+	// Prepare message
+	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
+	if err != nil { log.Error().Err(err).Msg("Unable to prepare chat WS message") }
+
+	// Send to all clients
+	for c, _ := range this.clients {
+		c.SendMessage(msgprep)
+	}
+
+	//==========================================================================
+	// Cleanup
+
+	// Clear queue
+	this.chatsToSend = make([]*ChatMessage, 0)
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Update clients with board changes
 
-func (this *WebSocketHub) processUpdate () {
+func (this *WebSocketHub) processBoardUpdate () {
 
 	//==========================================================================
 	// Initialization
@@ -468,7 +592,7 @@ func (this *WebSocketHub) processUpdate () {
 ////////////////////////////////////////////////////////////////////////////////
 // Complete backup of board state
 
-func (this *WebSocketHub) processBackup () {
+func (this *WebSocketHub) processBoardBackup () {
 
 	// Grab a timestamp
 	ts := strconv.Itoa((int)(time.Now().Unix()))
