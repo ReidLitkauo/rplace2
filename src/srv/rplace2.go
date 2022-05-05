@@ -48,6 +48,11 @@ func main () {
 	g_db = StartDatabase()
 	log.Info().Msg("Database initialized")
 
+	//==========================================================================
+	// Discord stuff
+
+	g_dwm = NewDiscordWebhookManager()
+	log.Info().Msg("Discord manager initialized")
 
 	//==========================================================================
 	// Endpoint stuff

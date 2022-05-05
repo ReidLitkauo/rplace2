@@ -226,6 +226,33 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 	}
 
 	//==========================================================================
+	// Prepare chat history message
+
+	// Literally structured exactly the same as the chat update message
+	// TODO maybe add this to its own function so I'm not maintianing the same
+	// flow in two different parts? This is also in processChatUpdate
+
+	// Only execute if we *have* a chat history
+	if len(this.chatHistory) > 0 {
+
+		// Generate JSON from stored chats
+		chats_json, err := json.Marshal(this.chatHistory)
+		if err != nil { log.Error().Err(err).Msg("Unable to marshal chats") }
+
+		// Create final byte array to send out
+		// Set message type and insert payload
+		msg_raw := append( []byte{MSG_S_CHAT}, chats_json... )
+
+		// Prepare message
+		msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
+		if err != nil { log.Error().Err(err).Msg("Unable to prepare chat WS message") }
+
+		// Add to init messages
+		ret = append(ret, msg_prep)
+
+	}
+
+	//==========================================================================
 	// All init messages are prepared
 
 	return ret
@@ -282,7 +309,7 @@ func (this *WebSocketHub) RequestAcceptMessage (c *WebSocketClient, msg []byte) 
 
 			// Reject all messages of unknown language
 			// TODO Uses the experimental package "golang.org/x/exp/slices"
-			if !slices.Contains(g_cfg.Langs, lang) { return false }
+			if slices.Index(g_cfg.Langs, lang) == -1 { return false }
 
 			//------------------------------------------------------------------
 			// Processing
@@ -297,7 +324,7 @@ func (this *WebSocketHub) RequestAcceptMessage (c *WebSocketClient, msg []byte) 
 			this.placedChats <- chat
 
 			// TODO Send message to appropriate Discord webhook
-			//g_dwm.SendMessage(chat)
+			g_dwm.SendMessage(chat)
 
 			return true
 
@@ -525,18 +552,19 @@ func (this *WebSocketHub) processChatUpdate () {
 
 	// Generate JSON from stored chats
 	chats_json, err := json.Marshal(this.chatsToSend)
+	if err != nil { log.Error().Err(err).Msg("Unable to marshal chats") }
 
 	// Create final byte array to send out
 	// Set message type and insert payload
-	msgraw := append( []byte{MSG_S_CHAT}, chats_json... )
+	msg_raw := append( []byte{MSG_S_CHAT}, chats_json... )
 
 	// Prepare message
-	msgprep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msgraw )
+	msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
 	if err != nil { log.Error().Err(err).Msg("Unable to prepare chat WS message") }
 
 	// Send to all clients
 	for c, _ := range this.clients {
-		c.SendMessage(msgprep)
+		c.SendMessage(msg_prep)
 	}
 
 	//==========================================================================

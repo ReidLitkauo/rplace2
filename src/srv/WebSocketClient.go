@@ -1,5 +1,5 @@
 //##############################################################################
-// /src/WebSocketClient.go
+// /src/srv/WebSocketClient.go
 // Handles a single client connection.
 
 package main

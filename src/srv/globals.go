@@ -16,6 +16,9 @@ var g_wsh *WebSocketHub
 // The database connection
 var g_db *sql.DB
 
+// The Discord manager
+var g_dwm *DiscordWebhookManager
+
 ////////////////////////////////////////////////////////////////////////////////
 // Constants
 

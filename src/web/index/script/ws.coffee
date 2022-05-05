@@ -224,7 +224,6 @@ $ ->
 
 				when MSG_S_USERINFO
 
-					# TODO set appropriate fields in settings
 					console.log d
 
 				#---------------------------------------------------------------
@@ -281,8 +280,7 @@ $ ->
 				# Chat message
 
 				when MSG_S_CHAT
-					console.log d
-					# TODO function q (varr) { return JSON.parse(new TextDecoder().decode(new Uint8Array(varr.buffer).slice(1))) }
+					chat_receiveMessages d
 				
 				#---------------------------------------------------------------
 				# Board update
