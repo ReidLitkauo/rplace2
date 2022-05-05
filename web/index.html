@@ -15,7 +15,7 @@
   // Websocket message types
 
   // Server messages
-  var ADMN, ANON, AUTH, BANN, BOARD_HEIGHT, BOARD_WIDTH, MSG_C_CHAT, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_CHAT, MSG_S_COOLDOWN, MSG_S_UPDATE, MSG_S_USERINFO, PALETTE, PALETTE_INTS, RATELIMIT_SEC, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, canvas_shouldSkipMouseEvent, chat_close, chat_open, chat_receiveMessages, g_board, g_cooldown, g_pos, g_role, g_text, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, popup_close, popup_open, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_chat, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
+  var BOARD_HEIGHT, BOARD_WIDTH, MSG_C_CHAT, MSG_C_IMAGE, MSG_C_PLACE, MSG_S_BOARDADMN, MSG_S_BOARDANON, MSG_S_BOARDAUTH, MSG_S_BOARDBANN, MSG_S_CHAT, MSG_S_COOLDOWN, MSG_S_UPDATE, MSG_S_USERINFO, PALETTE, PALETTE_INTS, RATELIMIT_SEC, ROLE_ADMN, ROLE_ANON, ROLE_AUTH, ROLE_BANN, STATUS_BANNED, STATUS_BOTPOS, STATUS_BOTRUN, STATUS_CONNERR, STATUS_COOLDOWN, STATUS_DCONN, STATUS_LINKACCT, STATUS_LOADING, STATUS_PLACETILE, anchorMX, anchorMY, anchorX, anchorY, bot_animateUI, bot_cancel, bot_loop, bot_place, bot_start, canvas_animateUI, canvas_applyPos, canvas_getMouseFromXY, canvas_getRawTransform, canvas_getXYFromMouse, canvas_shouldSkipMouseEvent, chat_close, chat_open, chat_receiveMessages, g_board, g_cooldown, g_pos, g_role, g_text, i, l, l_h, l_imgcc, l_timeout, l_w, l_ws, l_x, l_y, palette_clearUI, popup_close, popup_open, ref, status_get, status_handleCooldown, status_set, ws_paintBoard, ws_send_chat, ws_send_putImage, ws_send_putPixel, ws_updateBoard;
 
   MSG_S_USERINFO = 0x10;
 
@@ -42,13 +42,13 @@
 
   /////////////////////////////////////////////////////////////////////////////////
   // User roles
-  ANON = 0x80;
+  ROLE_ANON = 0x80;
 
-  AUTH = 0x81;
+  ROLE_AUTH = 0x81;
 
-  BANN = 0x82;
+  ROLE_BANN = 0x82;
 
-  ADMN = 0x83;
+  ROLE_ADMN = 0x83;
 
   /////////////////////////////////////////////////////////////////////////////////
   // Statuses
@@ -99,7 +99,7 @@
   g_pos = null;
 
   // User role
-  g_role = ANON;
+  g_role = ROLE_ANON;
 
   // Cooldown left in seconds
   g_cooldown = null;
@@ -798,11 +798,11 @@
         // Bot positioning: Place the image
         case STATUS_BOTPOS:
           // Start the bot normally if we're a normal user
-          if (g_role === AUTH) {
+          if (g_role === ROLE_AUTH) {
             bot_start();
           }
           // Admins get access to insta-place
-          if (g_role === ADMN) {
+          if (g_role === ROLE_ADMN) {
             return bot_place();
           }
           break;
@@ -886,14 +886,16 @@
       // Update the UI
 
       // Show appropriate follow-up status
-      if (g_role === ADMN) {
+      if (g_role === ROLE_ADMN) {
         status_set(STATUS_PLACETILE);
       }
-      if (g_role === AUTH) {
+      if (g_role === ROLE_AUTH) {
         status_set(STATUS_COOLDOWN);
       }
-      // Clean the palette UI
-      palette_clearUI();
+      // Clean the palette UI for non-admin users
+      if (g_role !== ROLE_ADMN) {
+        palette_clearUI();
+      }
       return false;
     });
   });
@@ -1297,7 +1299,7 @@
           // Board initialization: Standard authenticated user
           case MSG_S_BOARDAUTH:
             // Set role
-            g_role = AUTH;
+            g_role = ROLE_AUTH;
             // Show appropriate buttons
             $('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass('-hidden');
             // If we're not rate-limited, allow for pixel placement
@@ -1309,7 +1311,7 @@
           // Board initialization: Admin user
           case MSG_S_BOARDADMN:
             // Set role
-            g_role = ADMN;
+            g_role = ROLE_ADMN;
             // Remove rate limiting
             RATELIMIT_SEC = 0;
             // Show appropriate buttons
@@ -1321,7 +1323,7 @@
           // Board initialization: Banned user
           case MSG_S_BOARDBANN:
             // Set role
-            g_role = BANN;
+            g_role = ROLE_BANN;
             // Tell the user they suk
             status_set(STATUS_BANNED);
             break;
@@ -1450,9 +1452,9 @@
     g_pos.setMin().setMax();
     // Switch status appropriately
     switch (g_role) {
-      case ADMN:
+      case ROLE_ADMN:
         return status_set(STATUS_PLACETILE);
-      case AUTH:
+      case ROLE_AUTH:
         if (g_cooldown) {
           return status_set(STATUS_COOLDOWN, g_cooldown);
         } else {

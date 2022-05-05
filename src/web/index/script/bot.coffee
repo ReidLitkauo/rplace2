@@ -103,10 +103,10 @@ bot_cancel = ->
 	# Switch status appropriately
 	switch g_role
 
-		when ADMN
+		when ROLE_ADMN
 			status_set STATUS_PLACETILE
 		
-		when AUTH
+		when ROLE_AUTH
 			if g_cooldown then status_set STATUS_COOLDOWN, g_cooldown
 			else               status_set STATUS_PLACETILE
 

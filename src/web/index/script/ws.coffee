@@ -240,7 +240,7 @@ $ ->
 				when MSG_S_BOARDAUTH
 
 					# Set role
-					g_role = AUTH
+					g_role = ROLE_AUTH
 
 					# Show appropriate buttons
 					$('.panel.button.chat, .panel.button.settings, .panel.button.bot').removeClass '-hidden'
@@ -254,7 +254,7 @@ $ ->
 				when MSG_S_BOARDADMN
 
 					# Set role
-					g_role = ADMN
+					g_role = ROLE_ADMN
 
 					# Remove rate limiting
 					RATELIMIT_SEC = 0
@@ -271,7 +271,7 @@ $ ->
 				when MSG_S_BOARDBANN
 
 					# Set role
-					g_role = BANN
+					g_role = ROLE_BANN
 
 					# Tell the user they suk
 					status_set STATUS_BANNED

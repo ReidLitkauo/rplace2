@@ -29,10 +29,10 @@ MSG_C_CHAT      = 0xB0
 #///////////////////////////////////////////////////////////////////////////////
 # User roles
 
-ANON = 0x80
-AUTH = 0x81
-BANN = 0x82
-ADMN = 0x83
+ROLE_ANON = 0x80
+ROLE_AUTH = 0x81
+ROLE_BANN = 0x82
+ROLE_ADMN = 0x83
 
 #///////////////////////////////////////////////////////////////////////////////
 # Statuses
@@ -108,7 +108,7 @@ g_board = new Uint8ClampedArray(BOARD_WIDTH * BOARD_HEIGHT)
 g_pos = null
 
 # User role
-g_role = ANON
+g_role = ROLE_ANON
 
 # Cooldown left in seconds
 g_cooldown = null

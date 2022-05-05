@@ -116,27 +116,40 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	//==========================================================================
 	// Upgrade connection
 
+	//--------------------------------------------------------------------------
+	// Set upgrading specifications
+
 	// Specifications for the websocket upgrader
-	// TODO move these constants to a better spot
-	// TODO be smarter about what I accept from reading
 	upgrader := websocket.Upgrader {
-		ReadBufferSize:  5000000,
+		
+		// TODO move these constants to a better spot
+		ReadBufferSize:     8000,
 		WriteBufferSize: 5000000,
+
+		// Only allow the specified orgin to prevent attack
+		// NOTE also fixes some weird bug when I was setting up NGINX as a reverse proxy
+		CheckOrigin: func (r *http.Request) bool {
+			return r.Header["Origin"][0] == g_cfg.Serve.Origin
+		},
+
 	}
 
-	// Only allow the specified origin, to prevent attacks
-	// NOTE also fixes some weird bug when I was setting up NGINX as a reverse proxy
-	upgrader.CheckOrigin = func (r *http.Request) bool {
-		return r.Header["Origin"][0] == g_cfg.Serve.Origin
-	}
-
+	//--------------------------------------------------------------------------
 	// Perform the upgrade
+
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil { log.Warn().Err(err).Msg("Unable to upgrade WS connection") }
 
-	// Set ws connection parameters
-	// TODO constants
-	ws.SetReadLimit(64)
+	//--------------------------------------------------------------------------
+	// Set general connection specifications
+
+	// Set read limit based on user role
+	// TODO move constants to a better spot
+	switch role {
+		case ROLE_ADMN: ws.SetReadLimit(5000000)
+		case ROLE_AUTH: ws.SetReadLimit(   8000)
+		default:        ws.SetReadLimit(      0)
+	}
 
 	//==========================================================================
 	// Set up and return object
@@ -155,10 +168,11 @@ func NewWebSocketClient (wsh *WebSocketHub, db *sql.DB, w http.ResponseWriter, r
 	wsh.RequestRegistration(wsc)
 
 	// Run send/recv goroutines
+	// Only read messages from authorized users
 	go wsc.handleSend()
-	if username != "" { go wsc.handleRecv() }
+	if role == ROLE_ADMN || role == ROLE_AUTH { go wsc.handleRecv() }
 
-	// Send initialization message
+	// Send initialization messages
 	for _, msg := range(wsh.GetInitializationMessages(username, role)) {
 		wsc.SendMessage(msg)
 	}

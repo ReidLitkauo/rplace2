@@ -125,10 +125,10 @@ $ ->
 			when STATUS_BOTPOS
 
 				# Start the bot normally if we're a normal user
-				if g_role is AUTH then bot_start()
+				if g_role is ROLE_AUTH then bot_start()
 
 				# Admins get access to insta-place
-				if g_role is ADMN then bot_place()
+				if g_role is ROLE_ADMN then bot_place()
 
 
 			#===================================================================

@@ -83,11 +83,11 @@ $ ->
 		# Update the UI
 
 		# Show appropriate follow-up status
-		if g_role is ADMN then status_set STATUS_PLACETILE
-		if g_role is AUTH then status_set STATUS_COOLDOWN
+		if g_role is ROLE_ADMN then status_set STATUS_PLACETILE
+		if g_role is ROLE_AUTH then status_set STATUS_COOLDOWN
 
-		# Clean the palette UI
-		palette_clearUI()
+		# Clean the palette UI for non-admin users
+		if g_role isnt ROLE_ADMN then palette_clearUI()
 
 		false
 
