@@ -1,8 +1,3 @@
-Chat
-	Send messages
-	Receive messages
-	Message backlog stored server-side
-	Discord webhooks
 
 Settings
 	Change language
@@ -17,7 +12,6 @@ About popup
 
 Admin tools
 	Ban users
-	Make sure instaplace works
 
 Touchscreen support
 
