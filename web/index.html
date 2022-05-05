@@ -997,7 +997,7 @@
   /////////////////////////////////////////////////////////////////////////////////
   // Receive chat messages
   chat_receiveMessages = function(raw) {
-    var chatlog, len, m, msgs, n, scroll_lock;
+    var chatlog, el_group, el_msg, el_user, len, m, msgs, n, scroll_lock;
     //===========================================================================
     // Extract chats from raw
 
@@ -1023,17 +1023,41 @@
     // Cycle through each message
     for (n = 0, len = msgs.length; n < len; n++) {
       m = msgs[n];
+      //-----------------------------------------------------------------------
+      // Initialization
+
       // If this message already exists in the chat log, skip it
       if ($(`.chat-log .msg[id=${m.id}]`).length) {
         continue;
       }
+      //-----------------------------------------------------------------------
+      // Add to existing group
+
       // If this message's author also wrote the most recent message present,
       // then append to the last message group
       if ($('.chat-log .msg-group:last-child .user').text() === m.user) {
-        $('.chat-log .msg-group:last-child').append($(`<div class='msg'>${m.msg}</div>`));
+        // Create a new element for the message
+        el_msg = $('<div class="msg">');
+        // Sanitize user input through the text method
+        el_msg.text(m.msg);
+        // Display in the chat log
+        $('.chat-log .msg-group:last-child').append(el_msg);
       } else {
-        // Otherwise, create a new group with the message
-        $('.chat-log').append($(`<div class='msg-group'> <div class='user'>${m.user}</div> <div class='msg'>${m.msg}</div> </div>`));
+        // Create new elements for the message
+        //-----------------------------------------------------------------------
+        // Create a new group
+
+        // If the author of the most recent group is anyone else
+        el_user = $('<div class="user">');
+        el_msg = $('<div class="msg">');
+        el_group = $('<div class="msg-group">');
+        // Fill appropriately
+        el_user.text(m.user);
+        el_msg.text(m.msg);
+        // Create tree and append to chat log
+        el_group.append(el_user);
+        el_group.append(el_msg);
+        $('.chat-log').append(el_group);
       }
     }
     

@@ -52,23 +52,47 @@ chat_receiveMessages = (raw) ->
 	# Cycle through each message
 	for m in msgs
 
+		#-----------------------------------------------------------------------
+		# Initialization
+
 		# If this message already exists in the chat log, skip it
 		if $(".chat-log .msg[id=#{m.id}]").length then continue
+
+		#-----------------------------------------------------------------------
+		# Add to existing group
 
 		# If this message's author also wrote the most recent message present,
 		# then append to the last message group
 		if $('.chat-log .msg-group:last-child .user').text() is m.user
-			$('.chat-log .msg-group:last-child').append($("
-				<div class='msg'>#{m.msg}</div>
-			"))
 
-		# Otherwise, create a new group with the message
-		else $('.chat-log').append($("
-			<div class='msg-group'>
-				<div class='user'>#{m.user}</div>
-				<div class='msg'>#{m.msg}</div>
-			</div>
-		"))
+			# Create a new element for the message
+			el_msg = $('<div class="msg">')
+
+			# Sanitize user input through the text method
+			el_msg.text m.msg
+
+			# Display in the chat log
+			$('.chat-log .msg-group:last-child').append el_msg
+
+		#-----------------------------------------------------------------------
+		# Create a new group
+
+		# If the author of the most recent group is anyone else
+		else
+
+			# Create new elements for the message
+			el_user  = $('<div class="user">')
+			el_msg   = $('<div class="msg">')
+			el_group = $('<div class="msg-group">')
+
+			# Fill appropriately
+			el_user.text m.user
+			el_msg.text  m.msg
+
+			# Create tree and append to chat log
+			el_group.append el_user
+			el_group.append el_msg
+			$('.chat-log').append el_group
 	
 	#===========================================================================
 	# Keep scroll lock if already set
