@@ -2,7 +2,8 @@
 # /src/web/index/script/ws.coffee
 # Manages this client's websocket connection, sends and parses messages
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 import Cookie from 'js-cookie'
 
 import Globals from './globals.coffee'
@@ -34,6 +35,7 @@ export sendPixel = (x, y, c) ->
 	# Message variables
 	ab = new ArrayBuffer 5
 	dv = new DataView ab
+	ua = new Uint8Array ab
 
 	#===========================================================================
 	# Header
@@ -55,7 +57,7 @@ export sendPixel = (x, y, c) ->
 
 	l_ws?.send dv
 
-	dv
+	ua
 
 #///////////////////////////////////////////////////////////////////////////////
 # Send a "place image" message
@@ -93,7 +95,7 @@ export sendImage = (x, y, w, h, ccs) ->
 
 	l_ws?.send dv
 
-	dv
+	ua
 
 #///////////////////////////////////////////////////////////////////////////////
 # Send a chat message
@@ -133,7 +135,7 @@ export sendChat = (msg) ->
 
 	l_ws?.send dv
 
-	dv
+	ua
 
 ################################################################################
 # Private functions

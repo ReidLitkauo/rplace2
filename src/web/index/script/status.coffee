@@ -2,7 +2,8 @@
 # /src/web/index/script/status.coffee
 # Handles displaying statuses, changing statuses, etc...
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 
 import Globals from './globals.coffee'
 import Text    from './text.coffee'

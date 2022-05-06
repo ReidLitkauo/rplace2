@@ -2,7 +2,8 @@
 # /src/web/index/script/bot.coffee
 # Responsible for image placement via bot (and admin image insta-place)
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 import UPNG from 'upng-js'
 
 import Globals from './globals.coffee'

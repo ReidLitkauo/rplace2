@@ -2,7 +2,8 @@
 # /src/web/index/script/ui.coffee
 # Handles the more technical aspects of rendering the UI
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 import Cookie from 'js-cookie'
 
 import Globals from './globals.coffee'

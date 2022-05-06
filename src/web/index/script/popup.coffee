@@ -2,7 +2,8 @@
 # /src/web/index/script/popup.coffee
 # Handles everything related to popups that get in your FACE
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 
 import Text from './text.coffee'
 

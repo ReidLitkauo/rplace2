@@ -2,7 +2,8 @@
 # /src/web/index/script/pos.coffee
 # Abstract representation of the user's position on the canvas
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 
 import Globals from './globals.coffee'
 

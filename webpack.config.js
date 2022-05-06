@@ -6,16 +6,24 @@ module.exports = {
 		rules: [
 			{
 				test: /\.coffee/,
-				loader: "coffee-loader"
-			}
-		]
+				use: [
+					{ loader: "header-fix" },
+					{ loader: "coffee-loader" },
+				],
+			},
+		],
 	},
 
 	entry: './src/web/index/$.coffee',
 	output: {
 		path: path.resolve(__dirname, 'web/static'),
 		filename: 'index.js'
-	}
+	},
 
+	resolveLoader: {
+		alias: {
+			"header-fix": path.resolve(__dirname, "webpack.header-fix.js"),
+		},
+	},
 
 }

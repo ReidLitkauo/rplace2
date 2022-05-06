@@ -2,7 +2,8 @@
 # /src/web/index/script/chat.coffee
 # Handles all the chat stuff
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 
 import * as Ws from './ws.coffee'
 

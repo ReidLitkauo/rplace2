@@ -2,7 +2,8 @@
 # /src/web/index/script/palette.coffee
 # Handles everything related to the palette at the bottom of the screen
 
-import $ from 'jquery'
+jsdom = require('jsdom')
+$ = if window? then require('jquery') else require('jquery')(new jsdom.JSDOM().window)
 
 import Globals from './globals.coffee'
 

@@ -1,15 +1,16 @@
 {
-	"jest": {
+	"jest.bak": {
 		"preset": "coffeescript-jest-preset"
 	},
 	"devDependencies": {
+		"@babel/preset-env": "^7.17.10",
 		"coffeescript-jest-preset": "^1.0.0",
+		"jquery": "^3.6.0",
 		"jsdom": "^19.0.0",
 		"webpack-cli": "^4.9.2"
 	},
 	"dependencies": {
 		"coffee-loader": "^3.0.0",
-		"jquery": "^3.6.0",
 		"js-cookie": "^3.0.1",
 		"upng": "^1.0.1",
 		"upng-js": "^2.1.0",
