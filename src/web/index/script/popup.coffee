@@ -1,33 +1,51 @@
 ################################################################################
-# Helper Functions
+# /src/web/index/script/popup.coffee
+# Handles everything related to popups that get in your FACE
+
+import $ from 'jquery'
+
+import Text from './text.coffee'
+
+################################################################################
+# Exported variables
+
+# Popup types
+export ABOUT    = 'about'
+export VALIDATE = 'validate'
+
+################################################################################
+# Private variables
+
+################################################################################
+# Exported functions
 
 #///////////////////////////////////////////////////////////////////////////////
 # Open a popup
 
-popup_open = (popup, extra = null) ->
+export open = (popup, extra = null) ->
 
 	#===========================================================================
 	# Special handling: Validation popup
 	# Show the relevant account validation message to the user
 
-	if popup is "validate"
+	if popup is VALIDATE
 
 		# The validate message type to grab is stored in the extra parameter
 
 		# Make sure we have a valid validate message
 		# If not, then do nothing
-		if not extra? or extra not of g_text.validate
+		if not extra? or extra not of Text.validate
 			return
 		
 		# If we do, then show the text of that message
 		# TODO make language-independent
-		$('.popup.validate .text').html g_text.validate[extra]['en']
+		$('.popup.validate .text').html Text.validate[extra]['en']
 
 	#===========================================================================
 	# General post-processing
 
 	# Close all open popups, only have one open at a time
-	popup_close()
+	close()
 
 	# Show the requested popup
 	$(".popup.#{popup}, .popup-grayout").removeClass '-hidden'
@@ -35,22 +53,25 @@ popup_open = (popup, extra = null) ->
 #///////////////////////////////////////////////////////////////////////////////
 # Close all popups
 
-popup_close = ->
+close = -> $('.popup, .popup-grayout').addClass '-hidden'
 
-	# Hide all popups and the grayout backdrop
-	$('.popup, .popup-grayout').addClass '-hidden'
+################################################################################
+# Private functions
 
 ################################################################################
 # Initialization
 
 $ ->
 
+	#///////////////////////////////////////////////////////////////////////////
+	# Show account validation popup if needed
+
 	# Parser for the URL's query string
 	query = new URLSearchParams window.location.search
 
 	# Check if we have a validation message to show to the user
 	if (validate_msg = query.get 'validate')?
-		popup_open 'validate', validate_msg
+		open VALIDATE, validate_msg
 
 ################################################################################
 # Event handling
@@ -65,19 +86,18 @@ $ ->
 
 	$('.panel.button.about').on 'click', (e) ->
 
-		popup_open 'about'
+		open ABOUT
     
 	#///////////////////////////////////////////////////////////////////////////
 	# Close popups
 
-	# TODO add close buttons
 	$('body').on 'click', (e) ->
 
 		# Close popups when user clicks outside of them
 		if $(e.target).add($(e.target).parents()).is('.popup-grayout')
-			return popup_close()
+			return close()
 
 		# Close popups when user clicks on a cancel button
 		if $(e.target).add($(e.target).parents()).is('button.cancel')
-			return popup_close()
+			return close()
 

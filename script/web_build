@@ -79,14 +79,14 @@ for fullroot, directories, filenames in os.walk(in_dir):
 		css = os.popen("sass --no-source-map --indented --style=compressed --load-path=" + in_dir + " --load-path=" + in_dir + "/_common '" + in_dir + root + "/\$.sass'").read()
 
 	# Compile .coffee
-	if should_compile(in_dir + root + '/\$.coffee', out_dir + root + '.html'):
-		print('Compiling: ' + in_dir + root + '/\$.coffee')
-		js = os.popen("coffee -p './" + in_dir + root + "/\$.coffee'").read()
-		js = os.popen('coffeescript-concat "' + in_dir + root + '/\$.coffee" -I "' + in_dir + root + '/' + inc_script_dir + '" | coffee -ps').read()
+	#if should_compile(in_dir + root + '/\$.coffee', out_dir + root + '.html'):
+	#	print('Compiling: ' + in_dir + root + '/\$.coffee')
+	#	js = os.popen("coffee -p './" + in_dir + root + "/\$.coffee'").read()
+	#	js = os.popen('coffeescript-concat "' + in_dir + root + '/\$.coffee" -I "' + in_dir + root + '/' + inc_script_dir + '" | coffee -ps').read()
 	
 	# Paste into template and write final file
 	print('Writing to ' + out_dir + root + '.html')
-	final_file = template.replace('%HEAD%', head).replace('%BODY%', body).replace('%STYLE%', css).replace('%SCRIPT%', js)
+	final_file = template.replace('%HEAD%', head).replace('%BODY%', body).replace('%STYLE%', css)#.replace('%SCRIPT%', js)
 	with open(out_dir + root + '.html', 'w') as of:
 		of.write(final_file)
 

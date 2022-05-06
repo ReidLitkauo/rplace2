@@ -1,40 +1,49 @@
 ################################################################################
-# Helper functions
+# /src/web/index/script/chat.coffee
+# Handles all the chat stuff
+
+import $ from 'jquery'
+
+import * as Ws from './ws.coffee'
+
+################################################################################
+# Exported variables
+
+################################################################################
+# Private variables
+
+################################################################################
+# Exported functions
 
 #///////////////////////////////////////////////////////////////////////////////
-# Open chat
+# Open the chat sidebar
 
-chat_open = ->
+export open = ->
 
-	# Reveal the chat side panel
+	# Reveal the chat sidebar
 	$('.chat-parent').removeClass '-hidden'
 
 	# Focus the chat input
 	$('.chat-parent .chat-send input').focus()
 
 #///////////////////////////////////////////////////////////////////////////////
-# Close chat
+# Close the chat sidebar
 
-chat_close = ->
+export close = ->
 
+	# Hide the chat sidebar
 	$('.chat-parent').addClass '-hidden'
 
+	# Blur the chat input
+	# Let's not accidentally type into it when using keyboard shortcuts
+	$('.chat-parent .chat-send input').blur()
+
 #///////////////////////////////////////////////////////////////////////////////
-# Receive chat messages
+# Display messages received from the server
+# This function expects Ws to have already done the heavy lifting of extracting
+# the JSON from the raw message
 
-chat_receiveMessages = (raw) ->
-
-	#===========================================================================
-	# Extract chats from raw
-
-	# Did a lot of fiddling in the JS console to get this juuuuust right
-	# - Make a typed array out of the buffer behind the message
-	# - Chop off the first byte and run the rest through a UTF8 decoder
-	# - Parse the resulting text into a JS object
-	msgs = JSON.parse new TextDecoder().decode new Uint8Array(raw.buffer).slice 1
-
-	# We now have an array of messages to append,
-	# with the oldest at index 0 and newest at the end.
+export displayMessages = (msgs) ->
 
 	#===========================================================================
 	# Store scroll position
@@ -44,7 +53,8 @@ chat_receiveMessages = (raw) ->
 
 	# Determine if we're scrolled to the bottom
 	# https://stackoverflow.com/a/876134
-	scroll_lock = chatlog.scrollTop is (chatlog.scrollHeight - chatlog.offsetHeight)
+	# Also activate if we're close enough (within 3px)
+	scroll_lock = (chatlog.scrollTop >= chatlog.scrollHeight - chatlog.offsetHeight - 3)
 
 	#===========================================================================
 	# Append messages to the chat log
@@ -101,6 +111,12 @@ chat_receiveMessages = (raw) ->
 		chatlog.scrollTop = chatlog.scrollHeight - chatlog.offsetHeight
 
 ################################################################################
+# Private functions
+
+################################################################################
+# Initialization
+
+################################################################################
 # Event handling
 
 $ ->
@@ -112,7 +128,7 @@ $ ->
 
 		e.preventDefault()
 
-		ws_send_chat $('.chat-parent form.chat-send input').val()
+		Ws.sendChat $('.chat-parent form.chat-send input').val()
 
 		$('.chat-parent form.chat-send input').val('')
 
@@ -122,7 +138,8 @@ $ ->
 	# Open and close
 
 	$('.panel.button.chat').on 'click', (e) ->
-		chat_open()
+		open()
 	
 	$('.chat-parent button.cancel').on 'click', (e) ->
-		chat_close()
+		close()
+

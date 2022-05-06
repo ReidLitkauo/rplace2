@@ -8,6 +8,8 @@ rplace2
 # Configuration, defaults are in config.example.yaml
 config.yaml
 
-# TODO
 # Don't upload the database!
 database.sqlite
+
+# Don't upload node modules :(
+node_modules

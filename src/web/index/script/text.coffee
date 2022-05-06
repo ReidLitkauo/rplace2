@@ -7,7 +7,7 @@
 # But meh. This project is small enough for this sort of thing to not be that
 # big of a deal.
 
-g_text =
+export default
 
 	############################################################################
 	# Color names

@@ -1,10 +1,11 @@
-#=require <globals>
-#=require <text>
-#=require <pos>
-#=require <canvas>
-#=require <status>
-#=require <palette>
-#=require <popup>
-#=require <chat>
-#=require <ws>
-#=require <bot>
+import Globals from './script/globals.coffee'
+import Text    from './script/text.coffee'
+
+import Bot     from './script/bot.coffee'
+import Chat    from './script/chat.coffee'
+import Palette from './script/palette.coffee'
+import Popup   from './script/popup.coffee'
+import Pos     from './script/pos.coffee'
+import Status  from './script/status.coffee'
+import Ui      from './script/ui.coffee'
+import Ws      from './script/ws.coffee'

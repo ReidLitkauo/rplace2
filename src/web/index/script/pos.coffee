@@ -1,101 +1,157 @@
 ################################################################################
-# Position declaration
+# /src/web/index/script/pos.coffee
+# Abstract representation of the user's position on the canvas
 
-g_pos = {
+import $ from 'jquery'
 
-	#///////////////////////////////////////////////////////////////////////////
-	# Position variables
+import Globals from './globals.coffee'
 
-	# X/Y coords of screen center
-	x: null
-	y: null
+import * as Ui from './ui.coffee'
 
-	# Floored versions of coords
-	xf: null
-	yf: null
+################################################################################
+# Exported variables
 
-	# Coordinate constraints
-	# min <= x/y < max
-	xmin: 0
-	ymin: 0
-	xmax: BOARD_WIDTH
-	ymax: BOARD_HEIGHT
+################################################################################
+# Private variables
 
-	# Zoom index and zoom level
-	zi: null
-	zl: null
+#///////////////////////////////////////////////////////////////////////////////
+# 2d positioning
 
-	# Valid values for zoom level
-	zooms: [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10]
+# X/Y coords of screen center
+# Range: min <= coord < max
+# Coords are floats
+l_x = null
+l_y = null
 
-	#///////////////////////////////////////////////////////////////////////////
-	# Position manipulation
+# Floored versions of above coords
+l_xf = null
+l_yf = null
 
-	set: (x, y, zi) ->
+# Coordinate constraints
+l_xmin = 0
+l_ymin = 0
+l_xmax = Globals.BOARD_WIDTH
+l_ymax = Globals.BOARD_HEIGHT
 
-		# Check for null values, which indicate to not change that coord
-		x ?= this.x
-		y ?= this.y
-		zi ?= this.zi
+#///////////////////////////////////////////////////////////////////////////////
+# Zoom
 
-		# Range checks and other validation
-		if x <  this.xmin then x = this.xmin
-		if y <  this.ymin then y = this.ymin
-		if x >= this.xmax then x = this.xmax * (1 - Number.EPSILON)
-		if y >= this.ymax then y = this.ymax * (1 - Number.EPSILON)
-		zi = Math.floor zi
-		if zi < 0 then zi = 0
-		if zi >= this.zooms.length then zi = this.zooms.length - 1
-		
-		# Set values
-		this.x = x
-		this.y = y
-		this.xf = Math.floor x
-		this.yf = Math.floor y
-		this.zi = zi
-		this.zl = this.zooms[zi]
+# List of allowable zooms
+l_zooms = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 3, 5, 10]
 
-		# Update view with new coords
-		canvas_applyPos()
+# Zoom level, expressed in UI as a multiplier
+l_zl = null
 
-		# For chaining, I guess
-		this
+# Zoom index, current index of above zoom level in list of allowable zooms
+l_zi = null
 
-	add: (x, y, zi) -> this.set(x + this.x, y + this.y, zi + this.zi)
+################################################################################
+# Exported functions
 
-	#///////////////////////////////////////////////////////////////////////////
-	# Position constraints
+#///////////////////////////////////////////////////////////////////////////////
+# Set user position to specified value
+# Ignores all parameters set to null
 
-	setMin: (x = 0, y = 0) ->
-
-		# Perform min adjustment
-		this.xmin = x
-		this.ymin = y
-
-		# Reposition if necessary
-		this.set this.x, this.y, this.zi
+export set = (x, y, zi) ->
 	
-	setMax: (x = BOARD_WIDTH, y = BOARD_HEIGHT) ->
+	#===========================================================================
+	# Validation and range checks
+	
+	#---------------------------------------------------------------------------
+	# Detect null parameters
 
-		# Perform max adjustment
-		this.xmax = x
-		this.ymax = y
+	# Check for null values, which indicate to not change that coord
+	x  ?= l_x
+	y  ?= l_y
+	zi ?= l_zi
 
-		# Reposition if necessary
-		this.set this.x, this.y, this.zi
+	#---------------------------------------------------------------------------
+	# 2d pos: Range checks
 
-}
+	# Check lower bound of range
+	if x < l_xmin then x = l_xmin
+	if y < l_ymin then y = l_ymin
+
+	# Upper bound or range
+	# Use Number.EPSILON here to make the number always below the max
+	# The way in which it's used here avoids rounding errors from large floats
+	if x >= l_xmax then x = l_xmax * (1 - Number.EPSILON)
+	if y >= l_ymax then y = l_ymax * (1 - Number.EPSILON)
+
+	#---------------------------------------------------------------------------
+	# Zoom: Validation and range checks
+
+	# Force zoom index to be integer
+	zi = Math.floor zi
+
+	# Range checks, keep within allowable zooms
+	if zi <  0              then zi = 0
+	if zi >= l_zooms.length then zi = l_zooms.length - 1
+
+	#===========================================================================
+	# Set values
+	
+	l_x = x
+	l_y = y
+
+	l_xf = Math.floor x
+	l_yf = Math.floor y
+
+	l_zi = zi
+	l_zl = l_zooms[zi]
+	
+	#===========================================================================
+	# Cleanup
+
+	# Update the UI
+	Ui.applyPos val()
+
+	# For method chaining
+	this
+
+#///////////////////////////////////////////////////////////////////////////////
+# Add values to current values
+
+export add = (x, y, zi) -> set x + l_x, y + l_y, zi + l_zi
+
+#///////////////////////////////////////////////////////////////////////////////
+# Set position constraints
+
+#===========================================================================
+# Minimum
+
+export min = (x = 0, y = 0) ->
+
+	# Adjust bounds
+	l_xmin = x
+	l_ymin = y
+
+	# Reposition if necessary
+	set l_x, l_y, l_zi
+
+#===========================================================================
+# Maximum
+
+export max = (x = Globals.BOARD_WIDTH, y = Globals.BOARD_HEIGHT) ->
+
+	# Adjust bounds
+	l_xmax = x
+	l_ymax = y
+
+	# Reposition if necessary
+	set l_x, l_y, l_zi
+
+#///////////////////////////////////////////////////////////////////////////////
+# Retrieve current values
+
+export val = ->
+	x: l_x
+	y: l_y
+	xf: l_xf
+	yf: l_yf
+	zi: l_zi
+	zl: l_zl
 
 ################################################################################
 # Initialization
-
-$ ->
-
-	# Grab position data from cookie, set to defaults if needed
-	x  = $.cookie('posx')  ? 1000.5
-	y  = $.cookie('posy')  ? 1000.5
-	zi = $.cookie('poszi') ? 6
-
-	# Initialize position
-	g_pos.set x, y, zi
 

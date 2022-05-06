@@ -1,5 +1,23 @@
 ################################################################################
-# Globals
+# /src/web/index/script/bot.coffee
+# Responsible for image placement via bot (and admin image insta-place)
+
+import $ from 'jquery'
+import UPNG from 'upng-js'
+
+import Globals from './globals.coffee'
+
+import * as Palette from './palette.coffee'
+import * as Pos     from './pos.coffee'
+import * as Status  from './status.coffee'
+import * as Ui      from './ui.coffee'
+import * as Ws      from './ws.coffee'
+
+################################################################################
+# Exported variables
+
+################################################################################
+# Private variables
 
 # Raw image color code data
 l_imgcc = null
@@ -10,7 +28,7 @@ l_x = l_y = 0
 # Image width and height
 l_w = l_h = 0
 
-# Bot timeout
+# Stores return from setTimeout
 l_timeout = null
 
 # TODO add transparency skip
@@ -18,12 +36,12 @@ l_timeout = null
 # TODO fix status upon bot start
 
 ################################################################################
-# Helper functions
+# Exported functions
 
 #///////////////////////////////////////////////////////////////////////////////
 # Start the bot's main loop
 
-bot_start = ->
+export start = ->
 
 	# Empty bot canvas, but keep the border
 	$('canvas.bot')[0].getContext('2d').clearRect 0, 0, l_w, l_h
@@ -32,51 +50,30 @@ bot_start = ->
 	$('.reticule').removeClass '-hidden'
 
 	# Reset min/max allowable position to allow free roaming
-	g_pos.setMin().setMax()
+	# Also grab the current position while we're at it
+	Pos.min()
+	Pos.max()
+	pos = Pos.val()
 
-	# Set position
-	l_x = g_pos.xf - Math.floor l_w / 2
-	l_y = g_pos.yf - Math.floor l_h / 2
+	# Set position of image's top-left
+	[l_x, l_y] = getTopLeft pos
 
 	# Begin main bot loop
-	l_timeout = window.setTimeout bot_loop, if g_cooldown? then 1000 * g_cooldown else 0
+	l_timeout = window.setTimeout placementLoop, if Globals.cooldown? then 1000 * Globals.cooldown else 0
 
 	# Set cooldown to max
-	g_cooldown = RATELIMIT_SEC
+	Globals.cooldown = Globals.RATELIMIT_SEC
 
 	# Set appropriate status
-	status_set STATUS_BOTRUN
-
-#///////////////////////////////////////////////////////////////////////////////
-# Bot main loop
-
-bot_loop = ->
-
-	# Iterate through image, row by row then pixel by pixel
-	for y in [0 ... l_h] then for x in [0 ... l_w]
-
-		# Grab index of pixel in bot space and canvas space
-		bi =  x        + ( y        * l_w)
-		ci = (x + l_x) + ((y + l_y) * BOARD_WIDTH)
-
-		# Skip transparent pixels
-		if l_imgcc[bi] == 255 then continue
-
-		# Compare image color code to board color code
-		# If not equal, send pixel message making it equal,
-		# set next iteration, then return
-		if g_board[ci] isnt l_imgcc[bi]
-			ws_send_putPixel x + l_x, y + l_y, l_imgcc[bi]
-			return l_timeout = window.setTimeout bot_loop, (RATELIMIT_SEC * 1000) + 50
-
-	# If we made it here, then all pixels match already
-	# Wait a little bit and try again
-	l_timeout = window.setTimeout bot_loop, 100
+	Status.set Status.BOTRUN
 
 #///////////////////////////////////////////////////////////////////////////////
 # Stop running the bot and clear all bot-related UI
 
-bot_cancel = ->
+export cancel = ->
+
+	#===========================================================================
+	# Stop loop and clear data
 
 	# Cancel bot loop
 	if l_timeout? then window.clearTimeout l_timeout
@@ -86,6 +83,9 @@ bot_cancel = ->
 	l_imgcc = null
 	l_x = l_y = 0
 	l_w = l_h = 0
+
+	#===========================================================================
+	# Update the UI
 
 	# Show bot icon again
 	$('.panel.button.bot').removeClass 'cancel'
@@ -98,67 +98,106 @@ bot_cancel = ->
 	$('.reticule').removeClass '-hidden'
 
 	# Reset min/max position to restore full movement
-	g_pos.setMin().setMax()
+	Pos.min()
+	Pos.max()
+
+	#===========================================================================
+	# Switch status
 
 	# Switch status appropriately
-	switch g_role
+	switch Globals.role
 
-		when ROLE_ADMN
-			status_set STATUS_PLACETILE
+		# Admins can always place a new tile
+		when Globals.ROLE_ADMN
+			Status.set Status.PLACETILE
 		
-		when ROLE_AUTH
-			if g_cooldown then status_set STATUS_COOLDOWN, g_cooldown
-			else               status_set STATUS_PLACETILE
+		# Normal users must respect the cooldown
+		when Globals.ROLE_AUTH
+			if Globals.cooldown then Status.set Status.COOLDOWN, Globals.cooldown
+			else                     Status.set Status.PLACETILE
 
 #///////////////////////////////////////////////////////////////////////////////
 # Used by admins to insta-place images
 
-bot_place = ->
+export instaplace = ->
 
 	# Retrieve x,y coords for image top-left
-	l_x = g_pos.xf - Math.floor l_w / 2
-	l_y = g_pos.yf - Math.floor l_h / 2
+	[l_x, l_y] = getTopLeft Pos.val()
 
 	# Send image placement message
-	ws_send_putImage l_x, l_y, l_w, l_h, l_imgcc
+	Ws.sendImage l_x, l_y, l_w, l_h, l_imgcc
 
-	# Nothing to do here
-	bot_cancel()
+	# Reset the UI
+	cancel()
+
+
+################################################################################
+# Private functions
+
+#///////////////////////////////////////////////////////////////////////////////
+# Bot main loop
+
+placementLoop = ->
+
+	# Iterate through image, row by row then pixel by pixel
+	# These variables are in image space, NOT canvas space
+	for iy in [0 ... h] then for ix in [0 ... w]
+
+		# Grab index of pixel in image space and canvas space
+		ii =  ix           + ( iy           * l_w)
+		ci = (ix + l_x) + ((iy + l_y) * Globals.BOARD_WIDTH)
+
+		# Skip transparent pixels
+		# TODO 255 is a sentinel value, maybe throw that in a constant
+		if l_imgcc[ii] == 255 then continue
+
+		# Compare image color code to board color code
+		# If not equal, send pixel message making it equal,
+		# set next iteration, then return to start over in 10 seconds
+		# plus a bit of a cushion just in case
+		if Globals.board[ci] isnt l_imgcc[ii]
+			Ws.sendPixel ix + l_x, iy + l_y, l_imgcc[ii]
+			return l_timeout = window.setTimeout placementLoop, (Globals.RATELIMIT_SEC * 1000) + 50
+
+	# If we made it here, then all pixels match already
+	# Wait a little bit and try again
+	l_timeout = window.setTimeout placementLoop, 100
+
+#///////////////////////////////////////////////////////////////////////////////
+# Get coordinates for top-left of image in canvas space,
+# given its center in canvas space
+
+getTopLeft = (pos) -> [
+	pos.xf - Math.floor l_w / 2
+	pos.yf - Math.floor l_h / 2
+]
 
 #///////////////////////////////////////////////////////////////////////////////
 # Animate bot-placement canvas
 
-bot_animateUI = ->
+animateUI = ->
 
-	# Grab width and height
-	w = $('canvas.bot').prop 'width'
-	h = $('canvas.bot').prop 'height'
+	# Get top-left of image in canvas space
+	# If we're actively placing, lock canvas in place and use existing coords
+	# If not, let the user position the canvas based on focused pixel (center)
+	[cx, cy] = if l_timeout? then [l_x, l_y] else getTopLeft Pos.val()
 
-	# Determine center offset from top-left so image renders in center
-	offx = Math.floor w/2
-	offy = Math.floor h/2
+	# Convert top-left and bottom-right to screen space
+	tl = Ui.canvasToScreen cx      , cy
+	br = Ui.canvasToScreen cx + l_w, cy + l_h
 
-	# Retrieve coordinates for top-left and bottom-right
-
-	# If we're actively placing, lock canvas in place
-	if l_timeout?
-		tl = canvas_getMouseFromXY l_x      , l_y
-		br = canvas_getMouseFromXY l_x + l_w, l_y + l_h
-
-	# If we're not actively placing anything, let the user position the canvas
-	else
-		tl = canvas_getMouseFromXY g_pos.xf - offx    , g_pos.yf - offy
-		br = canvas_getMouseFromXY g_pos.xf - offx + w, g_pos.yf - offy + h
+	# Get width of border so we can account for it when positioning
+	border_width = parseInt $('canvas.bot').css('border-width').slice 0, -2
 
 	# Position canvas appropriately
-	$('canvas.bot').css {
-		top:    (tl.my - 3) + 'px'
-		left:   (tl.mx - 3) + 'px'
-		width:  (br.mx - tl.mx) + 'px'
-		height: (br.my - tl.my) + 'px'
-	}
+	$('canvas.bot').css
+		top:    (tl.sy - border_width) + 'px'
+		left:   (tl.sx - border_width) + 'px'
+		width:  (br.sx - tl.sx) + 'px'
+		height: (br.sy - tl.sy) + 'px'
 
-	window.requestAnimationFrame bot_animateUI
+	# Start all over next frame
+	window.requestAnimationFrame animateUI
 
 ################################################################################
 # Initialization
@@ -166,7 +205,7 @@ bot_animateUI = ->
 $ ->
 
 	# Start the bot animation loop
-	window.requestAnimationFrame bot_animateUI
+	window.requestAnimationFrame animateUI
 
 ################################################################################
 # Event handling
@@ -181,13 +220,13 @@ $ ->
 		#=======================================================================
 		# Step 0: Check for alternate states
 
-		switch status_get()
+		switch Status.get()
 
 			#-------------------------------------------------------------------
 			# Cancel placement if we're positioning or running the bot
 
-			when STATUS_BOTPOS, STATUS_BOTRUN
-				bot_cancel()
+			when Status.BOTPOS, Status.BOTRUN
+				cancel()
 				return false
 
 		#=======================================================================
@@ -203,39 +242,47 @@ $ ->
 		fsel.on 'change', (e) ->
 
 			# If no file was selected
-			if !e.target.files.length then bot_cancel()
+			if !e.target.files.length then cancel()
 
 			#===================================================================
 			# Step 2: Process image
 
 			#-------------------------------------------------------------------
-			# Decode image
+			# Decode image and extract metadata
 
 			# TODO error handling
 			img = UPNG.decode await e.target.files[0].arrayBuffer()
 
-			# Array of color codes for this image, stored for later
-			l_imgcc = new Uint8Array img.width * img.height
-
 			# Convert image to RGBA values
-			img_rgba = UPNG.toRGBA8(img)[0]
+			iml_rgba = UPNG.toRGBA8(img)[0]
 
 			# And get a data view
-			img_dv = new DataView img_rgba
+			iml_dv = new DataView iml_rgba
 
-			# Also store image width and height for later
+			# Store width and height for later
 			l_w = img.width
 			l_h = img.height
 
+			# Array of color codes for this image, stored for later
+			l_imgcc = new Uint8Array l_w * l_h
+
 			#-------------------------------------------------------------------
 			# Convert to color codes
+
+			# Palette as a 1D array, also in RGBA format
+			# For easy comparision against the uint32's we'll be
+			# pulling out of the image
+			palette1d = new Uint32Array Palette.PALETTE.length
+			for i in [0 ... Palette.PALETTE.length]
+				c = Palette.PALETTE[i]
+				palette1d[i] = c[0] << 24 | c[1] << 16 | c[2] << 8 | c[3] << 0
 
 			# Loop over all pixels
 			for i in [0 ... l_imgcc.length]
 
 				# Get color code for this pixel
-				rgba = img_dv.getUint32 i*4
-				cc = PALETTE_INTS.indexOf rgba
+				rgba = iml_dv.getUint32 i*4
+				cc = palette1d.indexOf rgba
 
 				# If this is a valid color, set value appropriately
 				if cc != -1 then l_imgcc[i] = cc
@@ -244,7 +291,7 @@ $ ->
 				# and treat as if it doesn't exist
 				else
 					l_imgcc[i] = 0xFF
-					img_dv.setUint32 i*4, 0x00000000
+					iml_dv.setUint32 i*4, 0x00000000
 
 			#===================================================================
 			# Step 3: Display and position image
@@ -253,12 +300,12 @@ $ ->
 			# Position and draw image
 
 			# Set bot canvas properties
-			$('canvas.bot').prop('width', img.width).prop('height', img.height)
+			$('canvas.bot').prop('width', l_w).prop('height', l_h)
 
 			# Draw onto image
 			# This took a LOT of fiddling to get right
-			canvas_data = $('canvas.bot')[0].getContext('2d').getImageData 0, 0, img.width, img.height
-			canvas_data.data.set new Uint8Array img_rgba
+			canvas_data = $('canvas.bot')[0].getContext('2d').getImageData 0, 0, l_w, l_h
+			canvas_data.data.set new Uint8Array iml_rgba
 			$('canvas.bot')[0].getContext('2d').putImageData canvas_data, 0, 0
 
 			#-------------------------------------------------------------------
@@ -266,8 +313,8 @@ $ ->
 
 			# Set min/max position to not draw over the edge
 			# TODO +1 seems wrong
-			g_pos.setMin Math.floor(img.width / 2), Math.floor(img.height / 2)
-			g_pos.setMax BOARD_WIDTH - Math.ceil(img.width / 2) + 1, BOARD_HEIGHT - Math.ceil(img.height / 2) + 1
+			Pos.min Math.floor(l_w / 2), Math.floor(l_h / 2)
+			Pos.max Globals.BOARD_WIDTH - Math.ceil(l_w / 2) + 1, Globals.BOARD_HEIGHT - Math.ceil(l_h / 2) + 1
 
 			# Show canvas, hide pixel placement reticule
 			$('canvas.bot').removeClass '-hidden'
@@ -277,4 +324,4 @@ $ ->
 			$('.panel.button.bot').addClass 'cancel'
 
 			# Set status appropriately
-			status_set STATUS_BOTPOS
+			Status.set Status.BOTPOS

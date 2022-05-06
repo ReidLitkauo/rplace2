@@ -1,73 +1,133 @@
 ################################################################################
-# Helper functions
+# /src/web/index/script/status.coffee
+# Handles displaying statuses, changing statuses, etc...
+
+import $ from 'jquery'
+
+import Globals from './globals.coffee'
+import Text    from './text.coffee'
+
+import * as Bot     from './bot.coffee'
+import * as Palette from './palette.coffee'
+import * as Pos     from './pos.coffee'
+
+################################################################################
+# Exported variables
+
+# Various status codes and their associated keys
+export LOADING   = 'loading'
+export LINKACCT  = 'linkacct'
+export PLACETILE = 'placetile'
+export CONNERR   = 'connerr'
+export DCONN     = 'dconn'
+export COOLDOWN  = 'cooldown'
+export BANNED    = 'banned'
+export BOTPOS    = 'botpos'
+export BOTRUN    = 'botrun'
+
+################################################################################
+# Private variables
+
+# The current status
+l_status = LOADING
+
+################################################################################
+# Exported functions
 
 #///////////////////////////////////////////////////////////////////////////////
 # Set status
 
-status_set = (s, timeleft = RATELIMIT_SEC) ->
+export set = (s, timeleft = Globals.RATELIMIT_SEC) ->
 
 	#===========================================================================
 	# Common preprocessing
 
+	# Grab reference to the status panel
+	panel = $('.panel.status')
+
 	# Set dataset attribute right away
-	$('.panel.status')[0].dataset.mode = s
+	panel[0].dataset.mode = s
+
+	# Save status for later
+	l_status = s
 
 	#===========================================================================
 	# Special considerations
 
 	# Do we need to widen the status bar?
-	if s == STATUS_LINKACCT || s == STATUS_BANNED
-		$('.panel.status').addClass 'wide'
+	if s == LINKACCT || s == BANNED
+		panel.addClass 'wide'
 	else
-		$('.panel.status').removeClass 'wide'
+		panel.removeClass 'wide'
 	
-	# Special handling for cooldown status
-	if s == STATUS_COOLDOWN
-		$('.panel.status').html "
-			<img class='timeleft' src='/timer.svg' />
-			<div class='timeleft'></div>
-			"
-		status_handleCooldown timeleft
-		return
+	# Special handling for cooldown status, do nothing else
+	if s == COOLDOWN
+		handleCooldown()
+		return s
 
 	#===========================================================================
 	# Show status to user
 
-	# TODO allow for multiple languages
-	$('.panel.status').text g_text.status[s]['en']
+	# TODO support multiple languages
+	panel.text Text.status[s]['en']
+
+	# Return
+	s
 
 #///////////////////////////////////////////////////////////////////////////////
 # Retrieve status
 
-status_get = ->
-	$('.panel.status')[0].dataset.mode
+export get = -> l_status
+
+################################################################################
+# Private functions
 
 #///////////////////////////////////////////////////////////////////////////////
-# Show cooldown message to user
+# Special handling for cooldown message
 
-status_handleCooldown = (cooldown = RATELIMIT_SEC) ->
+handleCooldown = (cooldown = Globals.RATELIMIT_SEC) ->
 
-	g_cooldown = cooldown
+	#===========================================================================
+	# Initialization
 
+	# Set up cooldown UI
+	$('.panel.status').html "
+			<img class='timeleft' src='/timer.svg' />
+			<div class='timeleft'></div>
+		"
+
+	# Allow cooldown to be visible globally
+	Globals.cooldown = cooldown
+
+	#===========================================================================
+	# Update cooldown and UI
+
+	# Define a function to be called once a second,
+	# to update the cooldown timer shown to the user
 	intervalfn = () ->
 
+		#-----------------------------------------------------------------------
+		# Break scenarios
+
 		# No point in continuing if status has changed since last update
-		if status_get() isnt STATUS_COOLDOWN
+		if get() isnt COOLDOWN
 			clearTimeout interval
 			return
 
 		# Clear the interval if we don't need it anymore
-		if g_cooldown <= 0
-			g_cooldown = null
-			$('.panel.status .timeleft').html ''
+		if Globals.cooldown <= 0
+			Globals.cooldown = null
 			clearTimeout interval
-			status_set STATUS_PLACETILE
+			set PLACETILE
 			return
 		
+		#-----------------------------------------------------------------------
+		# Process update
+
 		# Determine hours/minutes/seconds left
-		h = Math.floor(g_cooldown / 3600)
-		m = Math.floor((g_cooldown % 3600) / 60)
-		s = Math.floor(g_cooldown % 60)
+		h = Math.floor(Globals.cooldown / 3600)
+		m = Math.floor((Globals.cooldown % 3600) / 60)
+		s = Math.floor(Globals.cooldown % 60)
 
 		# Add padding zeroes if needed
 		hs = (if h < 10 then "0" else "") + h
@@ -77,11 +137,16 @@ status_handleCooldown = (cooldown = RATELIMIT_SEC) ->
 		# Display the properly-formatted time left
 		$('.panel.status .timeleft').html "#{hs}:#{ms}:#{ss}"
 
-		# Decrement our time left
-		g_cooldown--
+		# Decrement our time left by one second
+		Globals.cooldown--
 	
+	#---------------------------------------------------------------------------
+	# Initialize
+
 	# Set the interval
 	interval = setInterval intervalfn, 1000
+
+	# And run for the first time, setInterval waits a second for the first call
 	intervalfn()
 
 ################################################################################
@@ -90,7 +155,7 @@ status_handleCooldown = (cooldown = RATELIMIT_SEC) ->
 $ ->
 
 	# Set initial status
-	status_set STATUS_LOADING
+	set LOADING
 
 ################################################################################
 # Event handling
@@ -102,38 +167,42 @@ $ ->
 
 	$('.panel.status').on 'click', (e) ->
 		
-		switch status_get()
+		switch get()
 
-			#when STATUS_LOADING
+			#when LOADING
 
 			#===================================================================
 			# Link account: Start reddit account linkage webflow
 
-			when STATUS_LINKACCT
+			when LINKACCT
 				window.open(document.location.protocol + "//" + document.location.host + "/endpoint/link-reddit-account", "_blank").focus()
 
 			#===================================================================
 			# Place tile: Show the palette
 
-			when STATUS_PLACETILE
-				g_pos.set g_pos.xf + 0.5, g_pos.yf + 0.5, null
-				$('.palette').removeClass('-hidden')
+			when PLACETILE
+
+				# Center the view on the selected pixel
+				pos = Pos.val()
+				Pos.set pos.xf + 0.5, pos.yf + 0.5, null
+
+				# Show the palette
+				Palette.open()
 
 			#===================================================================
 			# Bot positioning: Place the image
 
-			when STATUS_BOTPOS
+			when BOTPOS
 
 				# Start the bot normally if we're a normal user
-				if g_role is ROLE_AUTH then bot_start()
+				if Globals.role is Globals.ROLE_AUTH then Bot.start()
 
 				# Admins get access to insta-place
-				if g_role is ROLE_ADMN then bot_place()
-
+				if Globals.role is Globals.ROLE_ADMN then Bot.instaplace()
 
 			#===================================================================
 			# Bot running: Stop the bot
 
-			when STATUS_BOTRUN
-				bot_cancel()
+			when BOTRUN
+				Bot.cancel()
 

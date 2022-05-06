@@ -146,16 +146,8 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 	// New scopes are nice, glad all curly braces establish new scopes
 	{
 
-		// Map role to message type
-		msg_type := MSG_S_BOARDANON // Default
-		switch role {
-			case ROLE_ADMN: msg_type = MSG_S_BOARDADMN
-			case ROLE_AUTH: msg_type = MSG_S_BOARDAUTH
-			case ROLE_BANN: msg_type = MSG_S_BOARDBANN
-		}
-
 		// Prepend the correct message type to the stored board
-		msg_raw := append( []byte{ byte(msg_type) }, this.board... )
+		msg_raw := append( []byte{ byte(MSG_S_BOARD) }, this.board... )
 
 		// Use it to generate a new prepared message
 		msg_prep, err := websocket.NewPreparedMessage( websocket.BinaryMessage, msg_raw )
@@ -169,8 +161,7 @@ func (this *WebSocketHub) GetInitializationMessages (username string, role int) 
 	//==========================================================================
 	// Prepare optional user settings message
 
-	// Only for logged-in users!
-	if role == ROLE_ADMN || role == ROLE_AUTH {
+	{
 
 		// Message structure
 		type msg_settings struct {
